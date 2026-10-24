@@ -2,7 +2,7 @@
 
 [Decision index](README.md)
 
-**Status:** Proposed, 2026-10-24. **Implementation:** absent. Team agreement and concurrency/restart tests are required before adoption.
+**Status:** Initial proposal, refined by [ADR 0005](0005-webcam-wireless-pi3-masterplan.md) into ordered atomic batches with a logical query per input. Sole state ownership and commit acceptance remain current design proposals. **Implementation:** absent; concurrency/restart tests remain required.
 
 ## Context
 

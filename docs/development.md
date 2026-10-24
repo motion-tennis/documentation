@@ -1,18 +1,18 @@
-# Development setup and startup
+# Development setup and integrated startup
 
-[Documentation home](../README.md) · [Architecture](architecture.md) · [Testing](testing.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Architecture](architecture.md) · [Testing](testing.md)
 
-## Current state
+## Current state and reference profile
 
-**Implemented:** the inspected repositories contained only their README and MIT license before this documentation work. There is no firmware, tracking service, physics service, game executable, dependency manifest, build system, configuration template, or existing CI workflow. The documentation checker described below is available; a complete game cannot yet be built or started.
+**Implemented:** repository documentation, a documentation checker, shared specification artifacts and the small offline trace checker in `debug-units`. There is no controller firmware, capture/inference pipeline, physics service, game state server, renderer, live collector or integrated startup executable. A complete game cannot yet be built or started.
 
-**Agreed design:** ESP32 handheld controllers communicate over Wi-Fi with a Raspberry Pi running physics. Kinect v2 skeleton tracking and the game engine are separate services, potentially sharing the PC. Linux is the intended PC environment; the skeleton-tracking dependency and its operating-system requirements remain **Open**.
+**Confirmed constraints:** four wireless battery-powered controllers, an available Raspberry Pi 3 Model B, and a Windows laptop with a user-reported RTX 5080. **Proposed reference design:** webcam-first `plane_2_5d` gameplay, ESP32-S3/BMI270 handhelds, native C++ Pi fusion/physics, GPU pose estimation and separate state/UI services on the laptop. The [master plan](master-plan.md), [reference profile](../spec/reference-profile.json) and [protocol](protocol.md) define one compatible implementation target. Proposed component choices and budgets are not hardware inventory or measured capabilities.
 
-## Obtain the repositories
+## Obtain all six repositories
 
-Git and repository access are the only requirements for obtaining the files. These SSH URLs come from the inspected `origin` remotes. SSH authentication must already be configured; do not place private keys or access tokens in the documentation. The observed local branch and `origin/HEAD` are `main` in all five repositories.
+Git and repository access are required. These SSH URLs come from inspected `origin` remotes; configure authentication locally and never include keys or tokens in documentation. All six inspected local branches and remote HEAD references are `main`.
 
-From a new parent directory, run:
+From a new parent directory:
 
 ```sh
 git clone git@github.com:motion-tennis/documentation.git
@@ -20,64 +20,78 @@ git clone git@github.com:motion-tennis/motion-tennis-camera-tracking.git
 git clone git@github.com:motion-tennis/motion-tennis-game-engine.git
 git clone git@github.com:motion-tennis/motion-tennis-physics-engine.git
 git clone git@github.com:motion-tennis/motion-tennis-controller.git
+git clone git@github.com:motion-tennis/debug-units.git
 ```
 
-For existing checkouts, inspect each checkout's `git status --short` and `git branch -avv` before editing. Preserve other people's changes; these instructions do not require resetting or cleaning a working tree. The side-by-side layout is convenient for cross-repository documentation validation, but it is not a runtime deployment requirement.
+For existing checkouts, inspect each repository's `git status --short`, current instructions and branch configuration. Preserve uncommitted work; setup does not require reset or cleanup. The sibling layout is convenient for local cross-repository checking, not a runtime deployment requirement.
 
-## Validate the documentation now
+## Checks available now
 
-The checker uses the Python standard library and requires Python 3.9 or later. From the `documentation` checkout:
+The documentation checker uses Python 3.9+ and the standard library. From `documentation`:
 
 ```sh
 python3 scripts/check_docs.py
 git diff --check
 ```
 
-The script checks Markdown links and heading anchors, maps known project GitHub links to available local checkouts, parses JSON examples, checks fence balance and basic Mermaid structure, and checks that the central transaction and timing documentation are present. By default it looks for sibling component repositories beside `documentation`. To use a different parent directory:
+With `debug-units` cloned beside this repository, the synthetic offline trace can be checked from the same directory:
+
+```sh
+python3 ../debug-units/scripts/check_trace.py ../debug-units/examples/synthetic-trace.jsonl
+```
+
+The fixture is synthetic. Passing it verifies the supported offline checks, not camera inference, radio performance or runtime interoperability. See the [debug environment](debugging.md) and [debug repository](https://github.com/motion-tennis/debug-units) for the tool's exact coverage.
+
+The documentation checker finds sibling repositories automatically; an alternate checkout parent can be supplied explicitly:
 
 ```sh
 python3 scripts/check_docs.py --workspace /path/to/MotionTennis
 ```
 
-The placeholder path above is a directory argument, not a repository file to create. Missing sibling checkouts are reported as skipped; the central documentation still gets checked. The script does not fetch URLs, validate arbitrary remote anchors, prove a Mermaid diagram parses, validate wire contracts against runtime code, or check natural language accuracy. Review the diagrams in a Mermaid-capable Markdown viewer and perform the review described in [Testing](testing.md). Cross-repository GitHub links to new pages will become usable remotely only when the corresponding changes are published through the team's normal review process.
+The path above is a placeholder directory argument. Missing checkouts are reported as skipped. Local validation maps known GitHub project links to worktrees; it does not publish pages or establish remote access. Mermaid structure and JSON syntax checks are not full rendering or runtime schema tests. Inspect new untracked files for whitespace separately because `git diff --check` omits them.
 
-## Development prerequisites to decide
+## Reference development prerequisites
 
-The following are **Proposed preparation steps**, not installed dependencies or working commands:
+The following are **proposed implementation choices and verification tasks**, not installed packages or runnable component commands. Pin actual versions and hashes only after a verified setup; add real build and launch entry points with the first implementation.
 
-| Area | Required before implementation can start | Current decision |
+| Area | Reference stack | First evidence required |
 | --- | --- | --- |
-| Controller | Identify ESP32 board, IMU, electrical interfaces, motor driver, power supply, firmware framework, flashing and serial tools | Open; record selections in [hardware](hardware.md) and an ADR |
-| Camera | Verify Kinect v2 adapter, host connectivity, acquisition driver, skeleton SDK/library, licensing and supported OS | Open; prove continuous joint tracking using the chosen route before building integration |
-| Physics | Choose Raspberry Pi model, OS, implementation language, runtime, transport library and deployment method | Open; preserve the required ball-state request/response |
-| Game | Choose PC requirements, language, renderer and build tooling | Open; retain Linux as the intended environment pending tracking compatibility |
-| Network | Provision a Wi-Fi network, addresses/service discovery, endpoint configuration, queue limits and reconnect policy | Open; credentials stay outside Git |
-| Measurement | Identify timer behavior, GPIO access, logging storage and available measurement equipment | Open; see [timing](timing.md) |
+| Controller | ESP32-S3-DevKitC-1-N8R8 candidate, BMI270 over SPI, ESP-IDF C/C++, protected battery supply and bounded output driver | Exact board revision, usable pins, safe power/wiring, IMU configuration, 200 Hz interrupt trace, battery-powered radio and measured output transitions |
+| Tracking | Windows webcam capture adapter using Media Foundation; Python RTMO-m/rtmlib worker with verified ONNX Runtime GPU | Exact webcam/driver/mode, RTX GPU/provider support, four-person identity/quality, timestamp meaning and calibrated 2.5D geometry |
+| Physics | Existing Pi 3 Model B, headless 64-bit Linux, C++20/CMake, bounded buffers and nonblocking I/O | Kernel/runtime manifest, scheduler trace, wired query/commit performance and deterministic batch/fusion fixtures |
+| Game | Windows C++20 state service; separate C++/SDL3 renderer | State handling independent of frames/inference, atomic versioned batch commit and traceable display events |
+| Network | Dedicated 2.4 GHz AP; Pi and laptop wired to LAN; UDP Protocol Buffers data and TCP control | Recorded endpoints/profile, all encoded datagrams within 1,200 bytes, session binding, retry/expiry and packet capture |
+| Debug | Python offline tooling now; collector/viewer/replay/fault injection to implement | Common run manifest, profile/schema hashes, clock-aware traces, complete transaction ledger and log-loss counters |
 
-Each component must add its real dependency manifest, build instructions, configuration reference and executable entry point alongside its first implementation. Do not treat the proposed message examples as a generated SDK or a compatibility guarantee.
+Read [hardware](hardware.md), [tracking stack](tracking-stack.md) and [networking](networking.md) before selecting installations or wiring. Schema artifacts do not imply generated serializers or compatible handlers already exist. Do not run guessed firmware, Python model, game or service commands merely because a framework appears in the plan.
 
-## Proposed integrated startup order
+## Proposed implementation and startup order
 
-This is the intended operational checklist once the component implementations exist. It is not a set of commands that works today.
+This checklist becomes executable only after the named components have working implementations.
 
-1. Record the run identifier, revisions of all repositories, device and OS versions, network conditions, protocol version and selected timing/queue limits. Check power, motor-driver safety, and camera placement using [hardware](hardware.md).
-2. Prepare the measurement reference and mapping configuration. As each device/service starts, establish its clock mapping and uncertainty, or mark cross-device age measurements unavailable. Do not enable skeleton-dependent gameplay until the required freshness/alignment bounds can be established. Verify that controller-local `t0`, `tr`, and `t1` use one monotonic clock.
-3. Start the PC game engine with a new game session and a known initial committed ball state. Check that its ball-state query service returns both a version and a simulation tick. Resetting a session must invalidate older results.
-4. Start continuous camera acquisition and skeleton processing. Check frame progression, preserved capture timestamps, confidence states and calibration. Acquisition remains independent of controller transactions.
-5. Start physics on the Raspberry Pi. Connect to the game service and the skeleton stream, initialize bounded buffers, and verify that only physics computes ball advances. Keep gameplay paused until state, calibration and tracking dependencies are valid.
-6. Start one ESP32 controller, establish its fresh boot/session identifier, and associate it with a tracked person through the agreed pairing process. Confirm that the controller can report communication and tracking failures distinctly from misses.
-7. Perform a single valid transaction and inspect its full trace: `controller_input`, selected `skeleton_frame`, `ball_state_request`, `ball_state_response`, calculation, `state_update`, proposed `state_commit_result`, `feedback_result`, electrical actuation and scene processing. A receipt acknowledgement is not transaction completion.
-8. Check that the ball continues to advance through the physics scheduler while no controller is active. Check that the game displays committed state without independently producing competing physics updates.
-9. Add controllers two through four, verify separate person associations, and run the [integration matrix](testing.md). Enable buffered collection before measuring; export logs outside the measured path.
+1. **Freeze the run profile.** Record the revisions of all six repositories, schema/profile hashes, actual devices, OS/kernel/driver/model versions, camera mode, AP/channel, input rate and instrumentation. Check power, battery, motor limits and camera placement.
+2. **Prove the two feasibility gates independently.** On the laptop, verify four-person capture/inference and 2.5D calibration with recorded timestamps. On the Pi, run synthetic 800-transaction/s input against a mock or real independent Windows state service; verify the 5 ms release/4 ms p99 service target and bounded overload before connecting gameplay.
+3. **Prepare nonblocking diagnostics.** Start the planned collector, packet captures and run manifest. Verify local trace buffers and dropped-record counters. Losing a debug consumer must not prevent services from responding.
+4. **Start the game state service.** Create a fresh game session and initial committed snapshot. Negotiate protocol/profile identity and one physics writer epoch. Start rendering separately so frame work cannot block snapshot/commit replies.
+5. **Start continuous webcam tracking.** Keep capture queue length one; count discarded frames. Validate frame/person identities, quality, calibration, GPU provider and capture-time semantics. Tracking does not wait for controller requests.
+6. **Start Pi physics/fusion.** Bind control/data/pose endpoints, allocate bounded histories and admission queues, and connect to the state service. Keep gameplay paused until the session, mappings, associations and calibration are usable.
+7. **Start and pair one wireless controller.** Establish a fresh controller boot/session and validate the chosen playing hand and lane/person association. Every 200 Hz interrupt retains its own transaction ID, even when the Pi batches requests. Verify error patterns and safe output limits.
+8. **Validate clocks and freshness.** As each component starts, establish its clock mapping and uncertainty. Confirm one ESP32 clock for `t0`, `tr` and `t1`. Do not enable gameplay when capture age or mapping uncertainty cannot satisfy the reference limits.
+9. **Trace a full batch.** Verify controller input, historical IMU/pose selection, per-transaction query entries, required snapshot response, ordered decisions, one atomic update, commit acceptance, matching feedback and eligible electrical cue. Confirm a receipt ACK alone cannot finish the transaction.
+10. **Enable periodic play and scale to four controllers.** Verify movement without controller events, add players deliberately, then run three 10-minute baseline trials at each controller count and the fault matrix. Export buffered evidence outside the measured path.
 
 ## Proposed minimal smoke test
 
-For each run, capture one valid hit, one valid miss, one tracking-loss input and one disconnected-service input. Match each admitted input to its terminal outcome or a counted local timeout using the controller ID, session ID and request sequence. For a hit or miss, verify the selected IMU/skeleton identities, base and committed ball versions, controller feedback and visible game event. For failure cases, verify an explicit failure state, no invented miss, no duplicate haptic actuation and no unaccepted state mutation. This smoke test is **not implemented or executed** yet.
+Capture a semantic hit, completed missed swing, tracking-loss input, disconnected-service input and a non-cue-eligible measurement. For every transaction, verify a response or counted local terminal outcome. Verify that successful batch events share the accepted version and preserve distinct transaction/event indices. Errors must not create ordinary misses; non-eligible samples must not invent `t1`.
+
+Send duplicate queries/updates/feedback, inject one stale snapshot and lose a commit reply. Confirm bounded retries, atomic all-or-nothing batch commit, no second event application, writer pause on unresolved commit, and suppression of expired output. Repeat with two simultaneous players and a batch containing two inputs from one controller. This runtime smoke test is not yet implemented or executed.
 
 ## Proposed shutdown and recovery
 
-Stop admitting new controller inputs, drain or explicitly cancel bounded outstanding work, turn the motors off, persist logs, and then stop services. After an unexpected restart, use new session identifiers, reject delayed messages from old sessions, clear invalid associations, fetch committed state and re-establish readiness. A lost commit response is an unknown outcome until the same update's retained deduplication result resolves it; a current ball snapshot alone does not prove whether that event committed. If the original outcome cannot be established, follow the session recovery/reset policy rather than blindly repeat feedback or the ball update. See [physics](physics.md) and [troubleshooting](troubleshooting.md).
+Stop admitting gameplay work, drain or explicitly reject bounded pending transactions, turn motors off, save buffered evidence, then stop services. After restart, change the appropriate session, invalidate old work and associations, and re-establish readiness. A surviving physics process may resume its writer epoch only under the protocol's explicit ownership checks.
+
+A lost commit reply remains uncertain until the retained original update result resolves it. Fetching only the current ball snapshot cannot prove whether an event committed. Pause or reset the session if the original outcome is unavailable; never repeat it under a new ID or replay its haptic cue. See [physics](physics.md) and [troubleshooting](troubleshooting.md).
 
 ## Contributing
 
-Keep shared architecture, contract and measurement definitions here; keep local commands in the appropriate component README. Describe each change as Implemented, Agreed design, Proposed or Open as appropriate. Update examples and diagrams together when an interface changes, run the checker and whitespace check, and record remaining limitations honestly. Preserve the existing MIT licenses and attribution. The repositories currently define no additional contribution workflow or publishing system.
+Follow [AGENTS.md](../AGENTS.md): all project edits, code and comments remain in English. Keep shared definitions central and each component's local setup accurate. Preserve **Implemented**, **Agreed design**, **Proposed** and **Open** distinctions, licenses, attribution and uncommitted work. Update examples, profile, schemas and diagrams together when interfaces change. Do not push, publish or change repository settings without authorization.

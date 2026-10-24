@@ -1,128 +1,148 @@
 # Timing requirements and measurement methodology
 
-[Documentation home](../README.md) · [Controller](controller.md) · [Clock domains](coordinates-and-time.md) · [Test matrix](testing.md)
+[Documentation home](../README.md) · [Network profile](networking.md) · [Controller](controller.md) · [Clock domains](coordinates-and-time.md) · [Test matrix](testing.md)
 
-**Agreed design:** evaluate the complete application transaction and its electrical feedback, preserve measurement identities and source timestamps, and account for failures. **Proposed:** precise instrumentation boundaries, stage metrics, and the experimental procedure below. **Open:** final deadlines, allowable miss rates, clock uncertainty limits, and hardware instrumentation. **Implemented:** no firmware timing hooks, running services, or hardware measurements exist; numerical values on this page are targets or illustrative arithmetic, never measured performance.
+**Agreed design:** measure the complete application transaction, preserve sensor and transaction identity, and account for unsuccessful observations. **Proposed reference targets:** the rates, latency targets, cutoffs and stage allocations on this page. **Implemented:** no timing hooks, running gameplay services or hardware measurements exist. The available hardware does not establish any of these performance figures.
+
+The reference deployment uses four wireless battery-powered ESP32 controllers, a Raspberry Pi 3 Model B for fusion/physics, and a Windows RTX 5080 laptop for continuous webcam pose estimation, committed ball state and visualization. It is a deadline-aware real-time design: expired gameplay results lose their value and must not actuate late. It is not a demonstrated hard end-to-end real-time system. Wireless contention, a general-purpose Windows host, GPU inference and camera/display pipelines do not currently have proven worst-case bounds.
 
 ## Primary controller measurements
 
-Use the same monotonic ESP32 timer and the same controller boot/session for all three timestamps:
+Use one monotonic ESP32 timer and the same boot/session for all three timestamps:
 
 | Timestamp | Event and recording rule |
 | --- | --- |
-| `t0` | The specified IMU interrupt or measurement boundary that starts the identified transaction. Prefer a hardware-captured interrupt edge if the selected board supports it; otherwise record the earliest bounded handler timestamp and characterize its delay from the electrical interrupt edge. Declare the chosen boundary in every run. |
-| `tr` | End of reception of the complete matching `feedback_result` at the controller's application receive boundary. Capture the candidate time when the complete framed message becomes available, then retain it as `tr` only after identity, protocol, payload, and expiry validation succeed. A receipt acknowledgement or an incomplete message is not this event. |
-| `t1` | The electrical transition that starts the selected feedback output for this transaction, such as the LED drive transition or motor-driver enable/PWM start. A function call that merely queues output is not electrical actuation. Record a software timestamp at the closest supported boundary and verify the difference with an electrical trace. |
+| `t0` | The specified IMU interrupt/measurement boundary starting the identified transaction. Prefer hardware capture if supported; otherwise timestamp the earliest bounded interrupt handler and characterize its delay from the physical interrupt edge. |
+| `tr` | Complete application-message receipt for the matching `feedback_result`. Capture a candidate time when the full UDP payload or bench-transport frame becomes available, then retain it as `tr` only after protocol, identity, payload and expiry validation. A transport receipt acknowledgement is not this event. |
+| `t1` | The electrical transition that activates the selected feedback output, such as LED drive or motor-driver enable/PWM start. A function call that only queues output is not electrical actuation. Verify timestamp placement against an electrical trace. |
 
-**Application response time:** `L_response = tr - t0`.
+Application response time is `L_response = tr - t0`. Time to electrical feedback is `L_electrical = t1 - t0`. Both use one ESP32 clock, so no device-to-device synchronization is needed for these differences. Timer scale error, wrap handling and event-placement error still matter; never subtract timestamps across controller boots.
 
-**Time to electrical feedback:** `L_electrical = t1 - t0`.
+The `tr` boundary excludes validation that happens after complete message reception. Record `t_validated` separately when needed. That validation, output scheduling and electrical delay are included in `t1 - tr`. Malformed, expired, wrong-session and duplicate responses retain diagnostic receive times but do not become a new successful completion or a repeated actuation.
 
-These local differences do **not** require synchronized clocks across the ESP32, Raspberry Pi, Kinect, or PC. They do require a monotonic timer, correct wrap handling, stable units, and no subtraction across reboots. A local timer's scale error still affects elapsed-time accuracy. See [clock domains](coordinates-and-time.md).
+Keep `t_led` and `t_motor` separately when their outputs differ, and state which defines the reported `t1`. If a policy intentionally leaves the motor off, use `null`/not applicable for its timestamp. A local timeout may produce a visible error without any application response; retain its deadline and fault-output times while `tr` remains absent.
 
-The proposed `tr` boundary excludes parsing/validation that occurs after the complete message becomes available. Record optional `t_validated` on the same timer to expose that work. Validation, feedback queueing, and output scheduling are included in `t1 - tr`. Discarded malformed, expired, wrong-session, or duplicate messages retain diagnostic receipt timestamps but do not become a new `tr` or a new actuation. If an implementation chooses completion of validation as its application boundary instead, name that metric separately and never mix its samples with this definition.
+Every 200 Hz IMU boundary has its own transaction and accounting record. Radio or Pi batching must not move `t0` to a later send time, suppress intermediate transaction IDs, or omit delay spent waiting for a batch.
 
-When LED and motor activate at different times, retain `t_led` and `t_motor`, report both relevant intervals, and state which defines the headline `t1`. A motor-off error policy has `t_motor = null`/not applicable; do not manufacture an actuation timestamp. A visible error pattern can still have a valid `t_led`, reported in its own outcome population. A local timeout may produce a fault indication without a received application response: record its deadline and output times while leaving `tr` absent.
+## Complete measured path
 
-## Included stages and boundaries
-
-The application measurement includes controller acquisition work after `t0`, transmission, Wi-Fi and receiver scheduling, physics queueing, association and pose selection, any bounded pose wait, the **required ball-state request and response**, physics calculation, result transmission, and application reception on the controller. The [proposed consistency model](physics.md) also waits for a state update and commit result before normal hit/miss feedback; that additional PC exchange is included. Retransmissions, contention, and associated waiting are part of the measured path, not removable overhead.
-
-`L_electrical` additionally includes response validation after `tr`, local feedback queueing, actuator scheduling, and electrical output delay. Concurrent feedback must have identifiable per-event boundaries; merged or overwritten pulses cannot silently stand in for individual measurements.
+The response interval includes controller work after `t0`, wireless delivery, receiver scheduling, Pi queueing, pose lookup and any permitted waiting, the **required ball-state request and response**, fusion/collision calculation, the proposed atomic commit exchange, feedback transmission and complete reception. Electrical-feedback time additionally includes local validation and output scheduling. Retries and queueing are part of the path, not removable measurement overhead.
 
 ```mermaid
 sequenceDiagram
-    participant S as IMU / earlier sensor processing
-    participant C as ESP32 clock and controller
-    participant T as Continuous Kinect tracking
-    participant P as Raspberry Pi physics
-    participant G as PC game state
-    participant O as Electrical feedback output
-    S->>C: Specified interrupt / measurement boundary t0
-    Note over C: Begin application response and electrical-feedback intervals
+    participant C as ESP32 controller clock
+    participant T as Continuous webcam pose service
+    participant P as Raspberry Pi 3 B physics
+    participant G as Windows game state service
+    participant O as Electrical output
+    Note over T,P: Capture and inference run continuously; source time is preserved
+    T-->>P: Pose observation with frame ID, quality and clock identity
+    Note over C: IMU boundary t0; assign transaction and sample IDs
     C->>P: controller_input
-    T-->>P: Buffered skeleton frame with original capture timestamp
-    Note over T,P: Capture can precede t0; pose waiting after t0 is included
-    P->>G: ball_state_request (required)
-    G-->>P: ball_state_response (required)
-    P->>P: Calculate result; record decision completion
-    P->>G: state_update (proposed commit path)
-    G-->>P: state_commit_result (proposed)
-    P-->>C: Complete matching feedback_result at tr
-    Note over C: Application response time ends at tr
-    C->>C: Validate, match and schedule output
-    C->>O: Electrical transition at t1
-    Note over C,O: Electrical-feedback interval ends at t1
-    Note over O: Light emission and vibration onset are separate physical events
+    P->>P: Bounded wait for batch; choose suitable buffered pose
+    P->>G: ball_state_request with each transaction query entry
+    G-->>P: ball_state_response with shared snapshot and matched entries
+    P->>P: Recheck freshness; ordered fusion and collision decisions
+    P->>G: Atomic state_update for ordered batch outcomes
+    G-->>P: state_commit_result
+    P-->>C: Matching feedback_result completely received at tr
+    C->>C: Validate and schedule permitted feedback
+    C->>O: Electrical output activation t1
+    Note over O: Vibration onset and emitted light are separate physical events
 ```
 
-The diagram shows a successful valid-input path. Invalid tracking or input can terminate earlier with a correlated error; absence of any timely matching response ends in a counted timeout. Neither is silently reclassified as a normal miss.
+The diagram shows an accepted batch member. Invalid inputs/tracking can terminate earlier with a correlated failure. Missing delivery terminates locally at the response cutoff, with a counted timeout. Neither becomes an ordinary miss. The per-transaction query identity remains explicit even when several queries share a datagram and ball snapshot.
 
-The following are outside the primary measurement unless separately instrumented:
+## Reference timing requirements
 
-- IMU conversion, filtering, FIFO residence, and physical movement before `t0`. An interrupt may report a sample captured earlier.
-- Kinect exposure and skeleton processing that occurred before the transaction. Continuous tracking does not acquire a new frame just because a controller sends a request. Capture age is a separate metric; any wait for an acceptable frame during the transaction remains included.
-- Mechanical motor vibration onset after the electrical drive transition. Motor ramp-up depends on the chosen hardware, power, mounting, and detection threshold.
-- LED light emission after the electrical transition, and actual PC display photons. Game acceptance, scene processing, render submission, and screen presentation are distinct boundaries.
+All targets are **provisional engineering choices requiring validation** on the actual Pi 3 B, laptop, AP and controllers. A percentile target is a statistical acceptance criterion for a stated experiment, not a guarantee for every transaction. A local expiry is intended program behavior that must itself be verified under overload.
 
-A timestamp with microsecond resolution does not establish microsecond accuracy. Interrupt scheduling, software placement, electrical marker skew, quantization, oscillator error, instrument bandwidth, and reference calibration all contribute error. An observed maximum is the largest value in a stated finite experiment; it is not a proven worst-case execution-time or end-to-end bound.
-
-## Timing requirements table
-
-Every implementation/verification cell remains unavailable until code and evidence exist. Targets need a declared workload, sample population, and acceptable miss rate before they can become performance acceptance criteria. The four numbers from the initial discussion are **provisional design targets**, not demonstrated capabilities.
-
-| ID | Start and end event | Target | Clock domain | Included and excluded stages | Validation method | Current implementation and verification |
+| ID | Start and end event | Reference target or limit | Clock domain | Included and excluded stages | Validation method | Implementation / verification |
 | --- | --- | --- | --- | --- | --- | --- |
-| T-01 | `t0` to `tr` | **Open:** complete application deadline and allowed miss rate | One ESP32 monotonic clock/session | Includes queueing, pose waiting, required ball query/response, calculation and proposed commit exchange; excludes pre-`t0` acquisition, post-`tr` validation and physical output | Correlated software trace plus controller GPIO/analyzer check; all outcomes and censored timeouts | Not implemented; no measurements |
-| T-02 | `t0` to chosen electrical `t1` | **Open:** complete feedback deadline and allowed miss rate | One ESP32 clock; electrical verification uses one analyzer timebase | T-01 plus validation and output scheduling; excludes vibration/light onset after the transition | Software markers compared with actual LED/motor drive traces | Not implemented; no measurements |
-| T-03 | Successive controller processing releases and their execution | **Provisional:** 200 Hz nominal processing, equivalent to a 5 ms period; execution deadline open | ESP32 monotonic clock | Local processing cadence; does not require or prove 200 completed network transactions per second | Release/start/finish logs, jitter and skipped-release counters under load | No scheduler or firmware; not verified |
-| T-04 | Successive periodic physics releases and logical simulation steps | **Provisional:** 5 ms nominal tick; allowed release jitter, commit delay and lag open | Pi monotonic scheduler clock plus separate logical simulation ticks | Periodic release and fixed integration step; query/commit waiting must be reported separately and may prevent this cadence | Release/compute/commit trace, missed ticks and simulation-lag measurement | No scheduler or simulation; not verified |
-| T-05 | Specified controller `t0` to complete `controller_input` available at the Pi application receive boundary | **Provisional:** at most 25 ms; permissible miss rate open | ESP32 and Pi require a validated mapping with uncertainty, or a common instrument | Includes post-`t0` controller work, transport and scheduling up to complete application receipt; excludes later Pi validation/queueing, pose wait, ball query, decision and feedback | Mapped software timestamps and, where practical, GPIO/common-reference measurement | No transport or mapping; not verified |
-| T-06 | Physics calculation complete to selected electrical `t1` | **Provisional:** at most 15 ms; permissible miss rate open | Pi and ESP32 require validated mapping or a common instrument | Includes proposed state commit round trip, feedback transmission, validation and actuation queueing; excludes earlier pose/query/calculation and later vibration onset | Decision marker, mapped controller timestamp and output trace | No calculation or commit path; not verified |
-| T-07 | Selected IMU/skeleton capture to physics decision; difference between selected capture times | **Open:** maximum IMU age, pose age, alignment error and mapping uncertainty | Source clocks mapped into common experiment time | Includes source acquisition age, buffering and transport; arrival freshness cannot replace capture age | Preserve source timestamps and mapping IDs; report age/alignment intervals and rejected-data counts | No provider, fusion or synchronization; not verified |
-| T-08 | Identified movement reference to actual LED/display light or vibration onset | **Open:** full physical response targets and detection thresholds | Independent calibrated reference/instrument timebase | Includes physical acquisition and output dynamics excluded by T-01/T-02; each output is a distinct metric | Calibrated light barrier/common trigger plus photodiode or vibration sensor | No physical experiment or apparatus selected; not verified |
+| T-01 | Controller `t0` to valid matching `tr` | p99 at most 30 ms in the baseline; local timeout at 50 ms | Same ESP32 monotonic clock/session | All application waits, required ball query and commit path; excludes pre-`t0` acquisition, post-receive validation and physical output | Complete transaction ledger, software timestamps and receive marker | Not implemented; not measured |
+| T-02 | Controller `t0` to selected electrical `t1` | p99 at most 40 ms for eligible feedback; no gameplay actuation at or after local 50 ms expiry | Same ESP32 clock; common analyzer for electrical verification | T-01 plus validation, scheduling and output delay; excludes physical vibration/light onset | Timestamp plus LED/motor drive trace | Not implemented; not measured |
+| T-03 | Successive IMU transaction boundaries | 200 Hz per controller, 5 ms nominal interval; all four controllers yield 800 logical transactions/s | Each ESP32 monotonic clock | Sensor notification/capture and local release behavior; does not prove 800 completed results/s | Interrupt/sample sequence, release jitter and dropped-event counters | Firmware and sensor configuration absent |
+| T-04 | Successive physics batch releases and logical steps | 5 ms nominal release/step; batch-service p99 at most 4 ms; at most four catch-up steps and 20 ms simulation lag | Pi monotonic time plus separate logical simulation time | Query, pose validation/fusion, collision and commit service time; collection wait is separate | Release/service/commit traces, queue depth, skipped releases and lag | Scheduler and state service absent |
+| T-05 | `t0` to complete input available at Pi application boundary | Routine design allocation 5.5 ms; independently measure its distribution | ESP32 and Pi mapped clocks with uncertainty, or common instrument | Controller preparation and wireless delivery; excludes Pi queue/pose/query/calculation | Mapped software records and GPIO reference where possible | No clock mapping or link measurement |
+| T-06 | Physics decision completion to electrical `t1` | p99 at most 15 ms in the baseline | Pi and ESP32 mapping or common instrument | Commit wait, feedback delivery, validation and output scheduling; excludes prior query/fusion and mechanical onset | Decision marker, accepted-commit trace and electrical output | No evidence yet |
+| T-07 | Original IMU/pose capture to decision; alignment of a delayed pose with historical IMU | IMU age at most 30 ms; pose age at most 80 ms; plane-position prediction at most 50 ms; historical capture alignment at most 25 ms; network mapping uncertainty at most 2 ms/source and camera timestamp uncertainty at most 8 ms | Mapped source clocks with declared uncertainty | Acquisition age and estimator/transport delay; apply age/alignment/prediction limits including uncertainty; arrival freshness is not capture freshness | Retain capture semantics, mapping IDs, historical sample selection and uncertainty intervals; unknown timing fails the gate | Camera/provider and fusion validation pending |
+| T-08 | Identified physical movement to actual LED/display light or vibration | Open: physical-onset target and detection threshold | Independent calibrated instrument/reference | Includes sensor and actuator/display dynamics outside T-01/T-02 | Light barrier/common trigger plus photodiode or vibration sensor | Equipment and experiments not validated |
+| T-09 | Query send to complete matching snapshot response | One retry at 2 ms; expiry at 5 ms | Pi local monotonic clock | Both network directions and Windows snapshot-service scheduling | Query identity and local send/receive records | Proposed policy only |
+| T-10 | Update send to resolved commit result | Identical retries at 2 ms and 4 ms; pause on ambiguity at 8 ms | Pi local monotonic clock | Network, game commit and response processing | Update identity, deduplication and lost-response injection | Proposed policy only |
 
-T-05 and T-06 do not cover the middle stages of a transaction and must not be added to claim a 40 ms end-to-end guarantee. A 5 ms logical physics step does not imply every network-dependent query/commit finishes in 5 ms. Similarly, 200 Hz local processing does not establish a transaction admission rate: four controllers at 200 requests/s would offer 800 full transactions/s to one serialized physics writer. Measure achievable capacity and settle admission policy before claiming support.
+For each of one through four controllers, perform three 10-minute baseline runs after separately recorded warmup. One four-controller run nominally starts 480,000 transactions. Require at most 1% late-or-failed attempts, the T-01/T-02 percentile targets, complete failure accounting, zero lost logs for acceptance, and zero observed wrong-player associations, duplicate state commits or stale gameplay actuation. The room, tracking eligibility, input load and rendering/inference workloads must be declared. Report every tracking failure rather than filtering it away; a fault-injection run evaluates correct failure behavior and need not meet the clean-baseline success ratio. These are proposed gates, not evidence that the system passes.
 
-## Correlation and stage timestamps
+The earlier 25 ms IMU-to-physics discussion is retained as historical context, not the reference's routine uplink allocation. The 15 ms decision-to-electrical target remains a provisional sub-path target. Neither a 25+15 ms sum nor any sum of isolated component percentiles establishes a 40 ms whole-transaction guarantee.
 
-Join a measurement by `(controller_id, session_id, request_seq)`, preserving IMU sample IDs, tracking session and skeleton frame/person ID, association/calibration version, ball query ID, base and committed state version, simulation tick, and update/gameplay/feedback event identity. Use the [protocol](protocol.md) for exact fields. An event ID alone cannot replace the originating request key.
+## Routine-path engineering budget
 
-Keep original sensor and frame timestamps unchanged. Append arrival, processing start/completion, send/receive, queue occupancy, and commit timestamps with their clock domain and event meaning. Logical simulation time describes which simulated state was evaluated; it is not a wall-clock timestamp. Log the difference between the selected simulation evaluation instant and mapped sensor capture time so delayed processing remains visible.
+This allocation guides implementation and diagnosis. It is **not measured**, not a worst-case proof, and not a set of independent p99 values that can be added into an end-to-end p99 claim. Measure T-01 and T-02 directly on every controller.
 
-For each decision, record IMU age, skeleton age, capture-time alignment residual, mapping uncertainty, selection policy, and any interpolation/prediction horizon. Close temporal alignment does not establish freshness: two equally old samples may align perfectly. Reject missing, stale, or unacceptably uncertain inputs under the [temporal fusion policy](coordinates-and-time.md#temporal-fusion-policy).
+| Stage | Routine allocation | Responsibility |
+| --- | --- | --- |
+| Interrupt boundary to encoded input handed to transport | 0.5 ms | Controller interrupt/task/SPI path |
+| Controller-to-Pi wireless and receive scheduling | 5.0 ms | Dedicated AP, controller radio and Pi receiver |
+| Wait for next eligible 5 ms batch | 5.0 ms | Pi admission/scheduler |
+| Pose selection and validity checks | 0.5 ms | Pi fusion input stage |
+| Required ball snapshot query and response | 1.0 ms | Wired LAN and independent Windows state service |
+| Ordered fusion/collision work for the batch | 0.5 ms | Native Pi physics path |
+| Atomic update and commit response | 1.0 ms | Wired LAN and Windows state service |
+| Feedback transmission and controller reception | 5.0 ms | Pi sender, AP and controller radio |
+| Validation and electrical-output scheduling | 1.5 ms | Controller response and output tasks |
+| Routine subtotal through electrical output | 20.0 ms | Complete path |
+| Diagnostic margin for ordinary variation | 10.0 ms | Must remain visible in measurements |
 
-Cross-device subtraction requires an explicit clock mapping or synchronization method and an uncertainty estimate valid for that interval. Neither recent packet arrival nor an unsynchronized timestamp is evidence of capture freshness. Do not assume half the RTT equals one-way delay; asymmetric wireless paths, queueing, and endpoint scheduling make that unsupported. A local Pi measurement of query send to matching response receipt is valid without clock synchronization, but cannot separate the two one-way network delays.
+The batch service subset above is 3 ms, leaving a 1 ms planning margin against the 4 ms service p99 gate. The separate 40 ms electrical acceptance target leaves room for variation, but it must not justify unbounded feedback queues. Query and commit retries are recovery behavior outside this routine allocation; their local expiry policies protect bounded operation, not successful-delivery deadlines.
 
-## Practical measurement plan
+Windows snapshot service performance and Pi service time are early feasibility gates. If they cannot meet the measured service profile, first fix avoidable blocking/allocation and separate rendering/inference contention. A slower profile or lower sample rate must be a named, recorded mode with revised requirements; never silently decimate inputs and continue claiming 200 Hz complete processing.
 
-1. **Specify the run.** Record component revisions, hardware, firmware/OS, sensor/backend configuration, network topology, controller count, input rate, load/fault parameters, sample count or duration, warm-up policy, deadlines, queue bounds, calibration, and clock mapping. Declare the precise `t0`, `tr`, `t1`, decision-completion, and capture boundaries before collecting results.
-2. **Add bounded software timestamps.** Capture monotonic timestamps at those boundaries and at queue, query/response, compute, commit, and render stages. Keep interrupt work short. Preserve complete transaction identities; do not associate records merely by nearby timestamps.
-3. **Verify with GPIO markers and a logic analyzer.** Mark interrupt handling, result reception, calculation completion where accessible, and output scheduling. Observe the actual IMU interrupt and LED/motor drive signals as well. Use one instrument timebase for signals that can be safely connected; verify ground/reference and electrical compatibility for the selected hardware. Measure marker-to-event skew and instrumentation overhead.
-4. **Measure optical output when needed.** Use a photodiode with a recorded threshold to detect LED emission or a controlled display patch tied to a specific event. Display buffering, refresh, scan position, and sensor response affect the result. Align the optical trace to the same reference trigger; rendering code completion is insufficient.
-5. **Measure vibration onset separately when needed.** Use an independently mounted accelerometer or another suitable sensor, declare an onset threshold and filtering method, and control mounting and power. Separate commanded drive, electrical motor activation, and detected motion. Do not assume a firmware pulse establishes perceptible vibration.
-6. **Run a full movement-to-feedback experiment.** Use an independent calibrated light barrier or equivalent physical reference crossed by a repeatable moving target. Define the reference's geometric relationship to the swing/collision event and characterize sensor/detection delay. Capture its trigger and the chosen optical or mechanical response with a shared timebase. This tests the physical path without redefining `t0` as an unmeasured motion onset.
-7. **Buffer and quantify observation overhead.** Write fixed-size timestamp/identity records to bounded memory, then flush outside the critical path or after the trial. Avoid synchronous console, disk, or network logging on the measured path. Count dropped log records and compare an instrumented run against a minimally instrumented run using external markers. Report any change caused by logging.
-8. **Run the complete matrix.** Follow [testing](testing.md), including one through four controllers, simultaneous events, tracking loss, CPU/rendering load, wireless impairments, stale versions/frames, queue overload, and service restarts. Repeat runs and retain failures and the raw evidence.
+## Bounded scheduling and overload
 
-The GPIO/analyzer path provides an independent check on software timestamp placement, not automatic calibration of all sensor and clock errors. Report instrument sample rate, timing uncertainty, threshold choice, reference calibration, wiring-induced delay where relevant, and clock-mapping uncertainty. State whether uncertainty is bounded analytically, calibrated, or estimated from observed residuals.
+Four 200 Hz controllers offer 800 logical requests/s. The reference Pi batch has normal occupancy four and capacity eight, at most two per controller, with a queue limit of four per controller. The extra batch capacity permits limited recovery after jitter. One batch is in flight at a time; the PC request and commit remain explicit.
+
+When a batch finishes late, record the missed release. Catch up at most four fixed 5 ms simulation steps without duplicating already integrated time. If lag exceeds 20 ms or a commit remains ambiguous, pause/degrade rather than build an unbounded queue. Identified rejected inputs receive `overloaded`, `stale_input`, `timeout` or the applicable explicit outcome; delivery failure still ends in the controller's own timeout ledger. Never overwrite an admitted request silently with a newer one.
+
+A 5 ms simulation step is a logical resolution, not proof that each network-dependent cycle finishes in 5 ms. The Pi's local scheduler, wired PC exchange, radio path and camera pipeline have separate measurements. `PREEMPT_RT`, CPU affinity and priority can improve local behavior but do not establish a hard bound for the whole system. See [network and host scheduling](networking.md#host-scheduling-profile).
+
+Haptic output cannot produce an independently resolved long vibration pulse for every 5 ms sample. Every transaction still needs a result and receipt timestamp; the reference policy emits a physical cue once per semantic hit or completed missed swing and marks cue eligibility in each result. Non-eligible samples have no `t1` and are counted separately. A dedicated measurement marker may expose per-result receipt without pretending it is motor actuation. A queued or merged effect is not a fabricated electrical response for every input. Hardware-safe pulse duration and event-to-cue behavior require separate validation; see [controller feedback](controller.md).
+
+## Sensor-age and measurement boundaries
+
+The primary transaction does not automatically include IMU conversion, filtering or FIFO residence before `t0`, nor camera exposure and inference that completed before the transaction. A camera frame can be old even when an application RTT is short. A transaction does not trigger a new exposure. Any wait for a usable pose after `t0` remains included in its measured latency.
+
+Preserve source capture time and its meaning, receiver arrival, processing start/completion, send/receive and logical simulation time as distinct fields. The reference fusion aligns each delayed pose with historical IMU observations from the 256-sample controller history, updates the plane-position estimate, then replays inertial orientation to the evaluation time. Do not compare a delayed camera frame only to the latest IMU sample and call the unavoidable sensor-rate difference a synchronization failure. Retain eight poses per person and log the chosen history IDs, input ages, alignment residual and uncertainty. Two old samples can align closely while both are unsuitable. Recheck these conditions after the ball-state response and before committing a candidate. Pose age and prediction limits both apply; the stricter gate controls eligibility.
+
+Single-camera pose inference does not remove time or depth uncertainty. If the camera API only exposes a host-arrival timestamp, record that limitation and characterize the acquisition delay; do not relabel receipt as exposure. A measured exposure-to-pose delay belongs beside the application RTT distribution, not hidden inside a claimed timer resolution.
+
+A mapping such as `T = a * t + b` must retain its identifier, validity interval, drift estimate and uncertainty. Reboot, drift or expired calibration invalidates it. Never assume half an RTT equals one-way delay. Local Pi query and commit RTT measurements are valid without cross-device synchronization, but they do not separate uplink and downlink latency. See [clock mapping](coordinates-and-time.md).
+
+Electrical motor activation differs from physical vibration onset. Processing a scene update differs from display photons. A microsecond-resolution counter does not prove microsecond accuracy. An observed maximum describes a finite experiment, not a proven worst-case bound.
+
+## Practical instrumentation plan
+
+1. Record hardware, firmware/OS/kernel, repository revisions, AP/channel, camera mode/exposure, model/runtime, GPU configuration, player count, workload and all rate/queue/deadline values in a run manifest. Retain warmup and inference/model initialization separately from steady-state trials.
+2. Add bounded monotonic timestamps at interrupt, complete message receipt, admission, batch release, query/response, decision, update/commit, feedback and output boundaries. Preserve full correlation identity; do not match traces solely by nearby times.
+3. Keep the critical path allocation-bounded and use buffered trace records. Export asynchronously; count trace-buffer overflow, dropped telemetry and capture losses. Compare instrumented versus minimally instrumented runs using external markers.
+4. Use GPIO markers and a logic analyzer for the real IMU interrupt, firmware boundary, matching-result receipt and actual LED/motor drive. Record marker skew, instrument sampling rate, timebase accuracy and electrical/reference compatibility.
+5. Optionally use photodiodes for LED emission and a dedicated display patch tied to an event ID. Record display refresh, scan position and onset threshold. Frame submission is not a photon timestamp.
+6. Optionally measure vibration onset with an independent accelerometer or equivalent sensor. Declare mounting, power, threshold and filtering; distinguish requested intensity, electrical drive and measured motion.
+7. For full movement-to-feedback experiments, use an independent calibrated light barrier or equivalent reproducible physical reference. Characterize the relationship between its trigger and the intended swing event, then observe that trigger and output on a common instrument.
+8. Exercise the [integration matrix](testing.md) with one through four controllers, simultaneous inputs, CPU/GPU/render load, wireless impairment, stale state/pose, clock faults, overload and service restart. Export raw evidence and report failures.
+
+Packet capture identifies which messages reached an observation point; it does not by itself reveal interrupt time, application processing, commit acceptance or physical actuation. Combine captures with component event records and clock-domain metadata. Keep collector/export work out of the gameplay service path.
 
 ## Complete accounting and reporting
 
-Every started measurement must end in a correlatable application result, including valid misses and invalid-input/tracking outcomes, or an explicit local terminal failure when a response cannot be delivered. Count locally dropped inputs, service rejections, missing responses, timeouts, and discarded late/wrong-session/duplicate responses. Keep pending-at-cutoff records visible. A late response can add reconciliation information but cannot become a second completion or trigger expired gameplay feedback.
+Join each measurement by controller ID, controller session and request sequence. Preserve IMU sample IDs, tracking session/frame/person, association and calibration IDs, query and batch IDs, base/committed state version and tick, update/event identity and result. A shared batch ID or event ID cannot replace the per-controller transaction key.
 
-Report sample count, median, p95, p99, and observed maximum for `L_response` and applicable `L_electrical`, with the percentile method and workload. Break them down by controller count, load/fault condition, and outcome. Include explicit failure responses in the overall response distribution, and show successful hit/miss distributions separately. Report deadline misses with denominators, timeouts, tracking failures, overload, state conflicts, dropped inputs, discarded responses, and missing/log-overflow records alongside the distributions.
+Each started measurement ends in a matching gameplay result, a matching explicit failure, a local terminal failure/timeout, or a still-pending record at the reporting cutoff. Count locally dropped input, remote overload, malformed/unmatched responses, duplicates, stale frames, clock-invalid data, state conflicts, late feedback, trace loss and reconnects separately. A late response is an additional event for an already timed-out transaction, not a second completion.
 
-A timeout is a **censored observation**: no valid response arrived within the declared interval, and its eventual completion latency may be unknown. Do not insert zero or the deadline as a fabricated completion latency, omit its count, or present successful percentiles as the experience of all requests. For electrical statistics, declare the population eligible for actuation and report both intentionally absent outputs and unexpectedly missing outputs. Once deadlines are agreed, count timeouts beyond a service deadline against its service objective according to the published rule.
+Report sample counts, median, p95, p99 and observed maximum for application response and eligible electrical feedback, broken down by controller, controller count, condition and outcome. State the percentile estimator and sample population. Include explicit failure responses in overall response distributions and show accepted hit/miss distributions separately. Publish target misses and all failure counts with their denominators.
 
-Also report queue residence, local query and commit round trips, computation duration, scheduling jitter, effective periodic intervals, missed ticks, simulation lag, input ages/alignment, and uncertainty where available. Observing no deadline miss in a finite run is evidence only for that workload and duration, not proof of a hard real-time bound.
+Timeouts are censored observations: actual response latency is unknown beyond the local cutoff. Do not fill them with zero, the cutoff value or an invented completion, and do not present successful-only percentiles as all-request performance. For electrical metrics, report intentionally absent, suppressed/coalesced and unexpectedly missing outputs separately. A 50 ms timeout does not prove that physical execution always reacts precisely at 50 ms; verify the local watchdog and output cutoff under load.
+
+Report batch occupancy, per-controller queue residence, query/commit RTT, computation time, scheduler lateness, missed releases, catch-up count, simulation lag, pose age, clock uncertainty and observer overhead. Zero observed failures in one run remains evidence only for that run's workload and duration.
 
 ## Illustrative arithmetic only
 
-The following values are synthetic and do not describe project performance. Suppose one controller session records `t0 = 1,000,000 us`, complete valid response reception `tr = 1,042,000 us`, validation completion at `1,043,000 us`, and motor electrical activation `t1 = 1,045,000 us`.
-
-- Application response time is `42 ms`.
-- Time to electrical feedback is `45 ms`.
-- Validation and output scheduling after reception occupy `3 ms`, including `1 ms` through validation completion in this example.
-
-No cross-device synchronization is needed for those subtractions. They say nothing by themselves about the IMU's earlier internal latency, the selected skeleton's age, one-way network delay, actual vibration onset, display photons, or satisfaction of a complete transaction deadline, which remains open. If a different request times out, it adds a censored outcome and failure count rather than a fabricated fourth timestamp.
+Suppose one controller session records `t0 = 1,000,000 us`, a complete valid response at `tr = 1,024,000 us`, validation completion at `1,025,000 us`, and selected electrical activation at `t1 = 1,027,000 us`. Then application response time is 24 ms and electrical-feedback time is 27 ms. No cross-device clock subtraction is required. These synthetic values are not project measurements and prove nothing about earlier camera/IMU latency or physical output onset.

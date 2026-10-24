@@ -1,47 +1,51 @@
-# Milestones and open decisions
+# Implementation work packages and remaining decisions
 
-[Documentation home](../README.md) · [Requirements](requirements.md) · [Decision records](adr/README.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [ADRs](adr/README.md)
 
-**Implemented:** documentation scaffolding and local documentation checks. **Agreed design:** project scope, devices, active skeleton fusion, and required controller transaction. **Proposed:** the milestones below; no dates, team assignments or completed runtime milestones are implied.
+The reference is concrete enough to divide work without inventing running software. Hardware availability and webcam/2.5D/wireless direction are confirmed; component implementations and measured timing remain absent. Dates and staffing are not invented.
 
-## Milestones and evidence
+## Delivery order
 
-| Milestone | Deliverable | Exit evidence |
-| --- | --- | --- |
-| M0: shared specification | Readmes, architecture, status labels, proposed contracts, timing definitions | Documentation checks and team review of proposals |
-| M1: feasibility and hardware | Selected ESP32/IMU/driver, Pi, Kinect host/backend and safe wiring | Repeatable sensor/actuator checks; skeletons for one to four people; timestamp semantics and dependency licenses recorded |
-| M2: interface baseline | Agreed versioned contract and finite limits; simulators/fixtures implemented by component teams | Round-trip correlation, input validation, duplicate/error/timeout tests without requiring a full game |
-| M3: consistency and temporal fusion | Query/response, single physics writer, versioned commits, pose association/calibration/clock mapping | Deterministic conflict/restart tests and bounded freshness checks |
-| M4: one-player integration | Complete controller transaction plus periodic motion and simple UI | Correlated trace and electrical timing measurements, including misses and invalid tracking |
-| M5: four-player evaluation | Full [test matrix](testing.md) and reporting pipeline | Distributions, failure accounting, overhead/uncertainty analysis and reproducible run metadata |
-| M6: demonstrator handover | Verified startup, troubleshooting and presentation material | A new contributor reproduces a documented run; claims match evidence |
+| Gate | Owning repositories | Required deliverable | Exit criterion |
+| --- | --- | --- | --- |
+| M0: shared baseline | documentation + all components | Profile/schema hashes, trace contract, status labels, fixtures | Documentation checks; contract review; maximum encoded-size validation |
+| M1a: camera feasibility | camera tracking + debug | Real Windows capture/model manifest; four-person tracker; calibration dataset | Valid whole-body focus/FOV, GPU provider, sustained pose rate and bounded timestamp uncertainty |
+| M1b: Pi/state feasibility | physics + game + debug | Headless synthetic batch producer/state service; baseline scheduler | Ordered atomic commits; nominal800 txn/s capacity gate under Pi3 load |
+| M1c: handheld feasibility | controller + debug | One battery board with IMU, driver and explicit timing markers | Safe power/output behavior,200 Hz accounting, local RTT/electrical traces |
+| M2: one-player end to end | all six | Real pose fusion plus required state query/commit and feedback | Known hits/misses and all fault paths; no identity ambiguity or silent failures |
+| M3: debug environment | debug + instrumented components | Live collector, packet decoder, timeline viewer, run bundles, simulator/replay/fault harness | Source manifest reconciliation, timestamp provenance, bounded log overhead and fault reproduction |
+| M4: four-player evaluation | all six | Three10-minute baseline runs at each count and complete fault matrix | Published distributions, ≤1% reference late/failure target, zero correctness/evidence violations |
+| M5: reproducible demonstrator | all six | Pinned dependency/build/run manifests, integration startup and diagnostic UI | Another contributor reproduces the documented results |
+| M6: true 3D extension | tracking + physics + game | New depth/stereo/multi-view profile and calibration | Verified metric 3D accuracy/identity/time; no guessed z in a 2D schema |
 
-Suggested work areas are controller hardware/firmware, tracking/fusion, physics/state consistency, visualization/state service, and shared measurement/integration. Assign contributors and reviewers according to these responsibilities.
+M1a, M1b and M1c can proceed independently after M0. Do not invest in a polished renderer before the camera and Pi 3/state-service gates. Do not claim M3 completed because the offline trace checker exists.
+
+## Concrete component backlog
+
+- **Controller:** board/power design, ESP-IDF manifest, BMI270 adapter, ISR/clock/session IDs, bounded UDP/control codec, pending table, association installation ACK, semantic cue scheduler, trace exporter and physical test points.
+- **Tracking:** Media Foundation adapter and rectification, latest-frame handoff, pinned RTMO-m/ORT GPU manifest, identity association, per-person publication, clock/uncertainty characterization and pairing diagnostics.
+- **Physics:** native receiver, IMU/pose histories, delayed fusion, calibrated plane mapping, swing/contact state machines, single batch writer, query/commit recovery, fixed-step simulation and buffered trace integration.
+- **Game:** native snapshot/commit service, persistent-for-session dedup cache, control/readiness/reset handling, separate minimal SDL3 renderer, state/pose diagnostics and presentation markers.
+- **Debug:** runtime emitters/collector, source registry, protobuf packet decoding and pcap joining, timeline/UI/reporting, virtual controllers/poses/game, deterministic replay, packet/message fault injector and evidence bundles. Offline checker/tests are the only implemented subset.
+- **Documentation:** pin decisions, review cross-repository schema changes, keep English instructions and exact measured validation status, publish no fake build commands or benchmarks.
 
 ## Open decision register
 
-All entries remain open until documented evidence or team agreement closes them. Proposed values do not silently become requirements.
+| ID | Remaining decision | Recommended starting point / resolving evidence |
+| --- | --- | --- |
+| O-01 | Exact webcam and playing distance | Validate actual Facecam generation/mode or alternative at full lane distance; focus/FOV and motion blur gate |
+| O-02 | Purchased controller/IMU/actuator/power parts | ESP32-S3 DevKitC + BMI270 SPI + DRV2605L/LRA reference; reviewed battery/power schematic and driver ratings |
+| O-03 | Exact OS/kernel/driver and dependency versions | Pi3 64-bit OS Lite; Windows native state/capture plus GPU runtime; pin proven manifests, evaluate PREEMPT_RT |
+| O-04 | Model artifact license/checksum and GPU binary compatibility | RTMO-m 640 candidate, no silent CPU fallback; measure four-person tails with renderer active |
+| O-05 | Final calibration layout and accuracy | Fixed player planes/lanes, measured geometric residuals, neutral heading and drift; reject unverified true 3D claims |
+| O-06 | Model confidence and dynamic fusion/swing tuning | Replay dataset with labeled faults and motion, not arbitrary interpretation of model score as probability |
+| O-07 | Refined physical budgets and thresholds | Start from reference profile; measure30/40/50 ms and data-age gates before accepting or revising |
+| O-08 | Battery duration and haptic drive calibration | Actual current/energy and onset tests; no mAh-only runtime promise |
+| O-09 | Source authentication and deployment isolation | Controlled dedicated LAN baseline; stronger authenticated profile if trust boundary changes |
+| O-10 | Maximum encoded-size and resource proof | Generated codecs/nanopb limits,8-entry worst-case message fixtures, bounded memory/retention pressure |
+| O-11 | Debug viewer technology and collection implementation | Follow debug-units module plan and trace-v1; keep rendering/export off critical path |
+| O-12 | Hardware/radio/model upgrade decision | Change only the measured bottleneck; faster Pi does not resolve radio nondeterminism or monocular depth |
 
-| ID | Decision | What resolves it | Initial responsible area |
-| --- | --- | --- | --- |
-| O-01 | Kinect v2 skeleton backend and compatible host OS | Working metric 3D joints, stable identities, one-to-four person tests, timing semantics, resource and license review | Tracking |
-| O-02 | ESP32 variant, IMU, framework, power, motor/driver, LED, pins | Available parts, driver support, electrical schematic and safe bench validation | Controller |
-| O-03 | Pi model/OS, PC resources and LAN topology | Hardware inventory and reproducible OS/network configuration | Integration |
-| O-04 | Game/physics/tracking implementation languages and frameworks | Supported target environments, state-service needs and build reproducibility | Component teams |
-| O-05 | Transport/bootstrap/schema agreement and endpoint discovery/security | Review [protocol](protocol.md), choose schemas, addresses/ports and lab security boundary | All interface owners |
-| O-06 | Ball model, court geometry, racket transform, fusion, collision and serve rules | Calibrated fixtures and deterministic physics cases | Physics and tracking |
-| O-07 | Pairing UI/control path, playing-hand choice and tracking recovery | Guided association tests including crossings and loss | Tracking and game |
-| O-08 | Coordinate calibration residual limits and clock mapping method/uncertainty | Physical reference measurements and mapping residuals | Measurement and tracking |
-| O-09 | IMU/pose age, alignment and uncertainty limits; interpolation/prediction horizon | Sensor-rate measurements and gameplay correctness tests | Physics and measurement |
-| O-10 | Full transaction deadline and feasibility of provisional timing targets | End-to-end load tests with all included stages | Measurement |
-| O-11 | Final queue limits, retries, deduplication retention, operation deadlines, catch-up/lag cap | Overload/restart tests with bounded memory and explicit failures | Physics and integration |
-| O-12 | Input admission rate versus 200 Hz processing; physical feedback scheduling | Four-player load and haptic scheduling experiments; complete outcome accounting | Controller and physics |
-| O-13 | LED/haptic patterns, maximum drive/duration, perceived onset | Characterized chosen hardware, safety limits and observable error legend | Controller |
-| O-14 | Log schema, storage, run duration/sample count and statistical method | Reproducible reporting with overhead and loss counters | Measurement |
-| O-15 | Pause policy on tracking loss and commit ambiguity | Explicit gameplay/recovery behavior reviewed against consistency and feedback guarantees | Game and physics |
+## Recording changes
 
-## How to close a decision
-
-Record the alternatives, evidence and resulting choice in an [ADR](adr/README.md), then update the shared specification and affected component README together. A decision's acceptance establishes design intent; mark runtime behavior implemented only when source and tests exist. Attach the exact commit/configuration and measurement limits to performance claims. Do not label an observed maximum as a proven worst-case bound.
-
-Next executable project work is feasibility and contract approval followed by real subsystem implementation. This documentation task intentionally does not create firmware, pose-estimation, simulation, or rendering code to make setup instructions look complete.
+Use an [ADR](adr/README.md) to supersede a reference choice or change protocol semantics. Update schema/profile hashes, component READMEs, debug fixtures and relevant acceptance gates together. A chosen design is not an implemented capability; a successful synthetic test is not a live hardware result. Preserve original licenses and avoid introducing institutional or assumed staffing context.

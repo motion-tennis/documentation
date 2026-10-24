@@ -1,197 +1,105 @@
-# Communication and message contracts
+# Motion protocol 0.2: live data and control contracts
 
-[Documentation home](../README.md) · [Architecture](architecture.md) · [Physics consistency](physics.md) · [Timing](timing.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Schema](../spec/motion.proto) · [Reference profile](../spec/reference-profile.json)
 
-**Implemented:** no transport, wire format, serializers, or protocol tests exist. **Agreed design:** controller input and feedback, continuous skeleton input, explicit physics-to-game ball-state request and response, and physics-to-game state/event output. **Proposed:** the entire contract below, including TCP, field names, version `0.1-proposed`, queue caps and commit acknowledgement. **Open:** approval of this contract, numerical deadlines, deployment endpoints and security profile.
-
-This page is the shared source of truth for message names and semantics. Examples are synthetic contract illustrations, not captured traffic or executable fixtures. Rejecting a proposal is permitted, but all component documentation must change together.
+**Proposed reference design, not implemented runtime behavior.** `0.2-proposed` supersedes the earlier proposed TCP/JSON live protocol. The [Protocol Buffers schema](../spec/motion.proto) defines field numbers and types; this page defines required presence, bounds and behavior that proto3 alone does not enforce. All six repositories must agree on the schema/profile SHA-256 before integration.
 
 ## Transport and connection setup
 
-Propose persistent TCP connections on a controlled laboratory LAN: controllers connect to physics over Wi-Fi; physics connects to the game state service and tracking service; the game may also subscribe to tracking for display. Listeners use operator-configured addresses/ports. No port, address, hostname, configuration file or discovery service is currently assigned.
+Use one serialized `motion.v02.Envelope` per UDP datagram for live data, at most **1,200 bytes including the envelope**. Reject oversized packets before processing. Do not split one atomic commit into independently applied fragments. A skeleton packet contains one person, not all four people; a separate frame-status packet lists visible IDs. An encoder that cannot fit eight decisions in one update must fail the schema acceptance test or lower the configured batch capacity and re-evaluate capacity; it must not truncate fields or silently split commits.
 
-Frame each message as a four-byte unsigned big-endian payload length followed by that many UTF-8 JSON bytes. Proposed payload range: 1 through 65,536 bytes. Read partial headers/bodies incrementally; do not equate TCP packets or individual reads with application messages. Reject oversize frames before allocating the payload. Apply a bounded assembly deadline to incomplete messages. Disable or enable buffering options only as a measured implementation choice, not a promised latency fix.
+TCP control messages use the same envelope with a four-byte big-endian byte length, maximum 65,536 bytes and a 1 s assembly deadline. Control handles hello, association, clock exchange, readiness, pause/reset, calibration/configuration transfer, and uncertain-commit lookup. Live data does not wait for log collection or a UI frame. The [network page](networking.md) defines topology and retry timing.
 
-TCP preserves byte order on one connection, but retransmissions and head-of-line blocking still affect latency. Reconnects, application retries and independently queued streams still require application deduplication and freshness checks. Network packet loss/reordering tests measure transport effects; application duplicate/out-of-order tests require a deliberate message-level harness.
+| Proposed listener | Device | Port | Data |
+| --- | --- | --- | --- |
+| Controller input | Pi | UDP 41000 | `controller_input`; reply to the controller's negotiated endpoint |
+| Ball-state service | Windows | UDP 41010 | Required `ball_state_request`, `state_update`; responses to physics |
+| Pose input | Pi | UDP 41020 | `skeleton_frame`, `frame_status` |
+| Trace collector | Windows | UDP 41030 | Separate trace batches, not gameplay messages; collector remains planned |
+| Physics control | Pi | TCP 41040 | Controller registration, association, calibration, run commands |
+| Game control | Windows | TCP 41041 | Writer setup, commit lookup, reset and renderer subscription |
+| Tracking control | Windows | TCP 41042 | Capture/model configuration, calibration, pairing diagnostics |
+| Debug control | Windows | TCP 41043 | Run start/stop, manifest, future viewer control |
 
-Use a `hello`/`hello_result` exchange before gameplay: negotiate exact protocol version, role (`controller`, `physics`, `tracking`, `game`), sender and boot/session identity, clock descriptors, supported capabilities, and finite limits. The receiver binds that connection to the role and identity; payload IDs cannot change the sender arbitrarily. The game issues `game_session_id` and a single active `writer_epoch` to an authorized physics session. A replacement writer fences the old epoch before accepting writes.
+These are reserved reference ports, not currently running services. Addresses are run-manifest values, not invented deployment hosts. Use a dedicated WPA2/WPA3-capable AP with a controller-compatible mode and isolated LAN. Bind sender role, ID, session and UDP source endpoint during setup; reject unknown senders. This is not cryptographic message authentication. Public/untrusted network use requires a separately reviewed authenticated/encrypted profile; keep credentials outside Git.
 
-The initial proposal requires an exact version match; unsupported versions fail setup explicitly. Future additive optional fields need documented compatibility rules; incompatible semantics require a new version. Stable endpoint discovery, credential provisioning, authenticated identity, encryption, heartbeat cadence and reconnect backoff remain open. Do not embed Wi-Fi credentials in examples or treat sender IDs as authentication.
+## Envelope, versioning and scalar validation
 
-## Envelope and scalar types
+Set `major=0`, `minor=2`. Require exact supported profile/schema hashes during `hello`; unknown versions, fields with incompatible semantics, unbound sessions or invalid message roles fail setup. `sender_id` is a provisioned numeric node ID, never a person identity. `sender_session_id` and `run_id` are exactly 16-byte unique IDs. `message_seq` increases within the sender session; identical retries reuse identity and payload. `sent_time_us` belongs to that sender session's `clock_id`.
 
-Every message has these required envelope fields:
+Counters and timestamps use protobuf `uint64`, with a mandatory wire-value maximum of **2^56 - 1 = 72057594037927935** so every varint fits in eight bytes. Validate this semantic limit in every codec; change the applicable session before reaching it. Full-width uint64 extremes are not legal profile values: eight maximum-width decisions could otherwise exceed the datagram cap. JSON trace exports use decimal strings to avoid floating-point precision loss. Never reuse a session after process restart or wrap counters into an outstanding key. Hashes are 32 bytes. Physical values must be finite. Proto3 default/absent values are not automatically valid: required nested messages, nonzero IDs, correct UUID lengths, enums other than UNSPECIFIED, vector completeness and bounds must be checked by handlers. An unavailable timestamp has `timing_valid=false`, not a fabricated capture at zero.
 
-| Field | Type and meaning |
-| --- | --- |
-| `protocol_version` | String, initially `0.1-proposed` |
-| `type` | One of the message types in this page |
-| `message_id` | Nonempty string unique within the sending session; retransmission keeps the original identity and payload |
-| `sender_id` | Provisioned component/controller identity, bound during setup |
-| `session_id` | Fresh sender boot/process-session ID; must not be reused after restart |
-| `clock_id` | Session-scoped monotonic clock descriptor for `sent_time_us` |
-| `sent_time_us` | Nonnegative integer microseconds encoded as a decimal string |
-| `payload` | Object defined for the message type |
-
-IDs are opaque strings. Construct `event_id` from the generating physics session and a session-local unique ID (for example `physics-session-a:event-42`); consumers retain it unchanged. Nonnegative counters (`request_seq`, `frame_id`, `state_version`, `simulation_tick`, `writer_epoch`, `association_version`) and microsecond timestamps use canonical decimal strings, with no signs or leading zeros except `"0"`, in the unsigned 64-bit range. This avoids precision loss in JSON consumers with floating-point numbers. Start a new session before counter wrap; normalize sensor counters explicitly. JSON physical values are finite numbers; NaN and infinity are invalid. Boolean flags are booleans, not strings. Optional unavailable values use explicit `null` where specified, not zero as an unknown sentinel.
-
-Proposed string length limit: 128 UTF-8 bytes for identifiers and 256 for human-readable error reasons. Required fields must be present. Reject duplicate object keys, wrong types, unsupported enum values, nonfinite vectors and out-of-range values. The exact joint set and per-field physical limits remain open and must be negotiated/configured before trials. Ignore no field that changes units, identity, timing or validation behavior.
-
-An illustrative complete request envelope:
-
-```json
-{
-  "protocol_version": "0.1-proposed",
-  "type": "ball_state_request",
-  "message_id": "query-42",
-  "sender_id": "physics-1",
-  "session_id": "physics-session-a",
-  "clock_id": "pi-monotonic-a",
-  "sent_time_us": "8800000",
-  "payload": {
-    "query_id": "query-42",
-    "game_session_id": "game-session-a",
-    "writer_epoch": "3",
-    "transaction": {"controller_id": "controller-1", "session_id": "controller-session-a", "request_seq": "42"}
-  }
-}
-```
-
-Envelope sender `session_id` and nested controller `transaction.session_id` identify different components; never substitute one for the other. A receiver appends its own arrival timestamp to its log; it does not rewrite the sender's capture or send time.
-
-## Shared records and correlation
-
-| Record | Required fields / semantics |
-| --- | --- |
-| `transaction` | `controller_id`, controller `session_id`, `request_seq`; unique key for a measurement from `t0` through its terminal outcome |
-| Capture observation | `capture_time_us`, `clock_id`, `capture_boundary`; original source timestamp and its meaning. Timestamp can be `null` when unknown, but unknown age cannot pass a bounded-freshness gate |
-| Association | Controller transaction identity bound to `tracking_session_id`, `person_id`, `association_version`, `calibration_id`, `playing_hand`, player slot |
-| Ball snapshot | `game_session_id`, `state_version`, `simulation_tick`, `tick_duration_us`, `coordinate_frame`, `calibration_id`, `position_m`, `velocity_m_s`, `radius_m` |
-| Selected input provenance | `imu_sample_ids`; `tracking_session_id`, `skeleton_frame_ids`, `person_id`, `association_version`, `calibration_id`; unchanged source capture records; `clock_mapping_ids`; computed ages/alignment and uncertainty in microseconds |
-| Feedback profile | `led_pattern`, `intensity` in `[0,1]`, nonnegative integer `duration_ms`; negotiated hardware-safe maximum and pattern vocabulary |
-
-A `person_id` is meaningful only in its tracking session. A state version is meaningful only in its game session. Reassociation or calibration changes invalidate queued work using the previous mapping. Physics owns the association table; an initial manual/operator-controlled pairing exchange is proposed, but its UI/control transport remains open. Gameplay must wait for a confirmed mapping rather than guessing from connection order.
-
-For provenance, record `imu_age_us`, `skeleton_age_us`, `alignment_error_us`, and `uncertainty_us` as nonnegative decimal strings with `clock_mapping_ids`; log signed residuals separately when useful. For more than one pose, retain all source frame IDs/capture records and the interpolation weights. Source clocks and uncertainty must be available, not inferred from fresh arrival alone. See [time mapping](coordinates-and-time.md#proposed-clock-mapping).
+Limits: four active controllers/player slots; up to eight query/decision entries, at most two per controller; exactly 17 unique COCO joint indices per tracked-person message; reasons at most 128 UTF-8 bytes. Indices 0–16 are nose, left/right eye, left/right ear, left/right shoulder, left/right elbow, left/right wrist, left/right hip, left/right knee, left/right ankle. Missing joints use `UNAVAILABLE`; zero coordinates are not a missing-data sentinel. Keypoint score and normalized image coordinates are in [0,1]; out-of-frame joints are marked unavailable, not clipped into apparently valid positions. Decoder collection lengths and memory must be bounded before allocation.
 
 ## Units and coordinate semantics
 
-Use metres, seconds for physics calculations, metres/second, metres/second squared, radians, and radians/second. Wire timestamps use integer microseconds, motor durations use integer milliseconds, and tick duration uses integer microseconds. Vectors are `[x,y,z]` in the named frame. The proposed world frame is right-handed: court center origin, +X court-right viewed from the near baseline, +Y up, +Z toward the near baseline. See [calibration](coordinates-and-time.md).
+Use SI: metres, seconds for physics, m/s, m/s², rad/s. Wire time is integer microseconds; haptic duration is integer milliseconds. Controller `specific_force_m_s2` includes gravity as measured in the calibrated sensor frame; physics owns gravity handling. No quaternion is required from the controller. Internal quaternion convention remains normalized `[x,y,z,w]`, active local-to-world rotation; q and -q are equivalent.
 
-Quaternions are normalized `[x,y,z,w]`, active rotations from the named source frame to target frame; `q` and `-q` are equivalent. Controller acceleration remains in the calibrated IMU frame until transformed, with gravity/specific-force semantics explicitly declared. Do not invent a world position by integrating uncalibrated raw acceleration.
+World is right-handed, origin court center, +X court-right from near baseline, +Y up, +Z toward near baseline. `Ball` always uses that world frame and the named calibration. Webcam joints are normalized coordinates of the original undistorted image after reversing model resize/letterbox transforms. They are not metric 3D coordinates. Physics applies the versioned `plane_2_5d` calibration. The outgoing velocity vector defines speed and angles; derive elevation `atan2(vy,sqrt(vx²+vz²))` and azimuth `atan2(vx,vz)`. Undefined zero-vector angles remain unavailable.
 
-The outgoing `velocity_m_s` vector is authoritative in a snapshot. For display, derive speed as its norm, elevation as `atan2(vy, sqrt(vx*vx + vz*vz))`, and azimuth as `atan2(vx, vz)` measured from +Z toward +X. Angles are undefined when their reference magnitude is zero; show unavailable rather than contradictory redundant angle fields. Spin and richer ball parameters require an agreed extension.
+## Message contracts and correlation
 
-## Message catalog
-
-All payloads include the following fields in addition to the envelope. Fields identified as nullable must still be present in that message's payload.
-
-| Type and direction | Payload and validation |
+| Message | Required semantics |
 | --- | --- |
-| `hello` / `hello_result`, connection initiator ↔ listener | Role, identity, session, versions, clock descriptors, capabilities and limits; result accepts or gives an explicit reason. Exact bootstrap schema is open until implementations select dependencies |
-| `controller_input`, controller → physics | `transaction`, `start_time_us` (= `t0` in the controller envelope clock), `association_version`, `calibration_id`, `imu_samples` array; each sample has `sample_id`, capture observation, `sensor_frame`, `acceleration_m_s2`, `angular_velocity_rad_s`, declared acceleration semantics, nullable orientation plus source/target frames. Proposed one sample per request initially; batching needs an explicit admission rule |
-| `skeleton_frame`, tracking → physics (and optionally game) | `tracking_session_id` (= sender session), `frame_id`, capture observation, `processing_complete_time_us` and `processing_clock_id`, `coordinate_frame`, `calibration_id`, `people` array. Each person: `person_id`, `tracking_state`, named joints with `position_m` or null, `tracking_state`, nullable backend confidence and its scale |
-| `ball_state_request`, physics → game | `query_id`, `game_session_id`, `writer_epoch`, `transaction` (null for periodic work). Must request a current atomic snapshot; an earlier push does not replace this exchange |
-| `ball_state_response`, game → physics | Echo `query_id` and `transaction`; `status` (`ok` or `error`), nullable `reason`; snapshot object for `ok`, null for error. Snapshot includes version and tick |
-| `state_update`, physics → game | `update_id`, `writer_epoch`, `game_session_id`, `base_state_version`, `target_simulation_tick`, `transaction` (null for periodic), candidate `ball`, `event` (null for periodic), `provenance` (null for periodic). Candidate ball includes position, velocity, radius, world frame and calibration; it does not assign the committed version |
-| `state_commit_result`, game → physics | Echo `update_id`, `transaction`, game session and writer epoch; `status` (`accepted`, `conflict`, `invalid`, `wrong_session`, `wrong_writer`); `state_version`, `simulation_tick`, nullable `reason`. For acceptance these identify the original commit; for rejection current state is diagnostic only and requires a fresh query |
-| `feedback_result`, physics → controller | `transaction`, `outcome`, nullable `reason`, nullable `event_id`, nullable `game_session_id`, nullable `state_version`, nullable `simulation_tick`, nullable `provenance`, and `feedback`. Hit/miss requires a successfully committed event and complete provenance; failures may lack unavailable snapshot/input fields |
+| `controller_input` | One transaction per IMU interrupt: `(controller_id, session_id, request_seq)`, `t0_us`, current `sample_id`, capture metadata/raw sensor ticks, association/calibration, specific force, angular rate, saturation, battery voltage. Envelope session must match transaction session. No silent sample decimation. |
+| `skeleton_frame` | One person per datagram: common capture `frame_id`, tracker-session-scoped `person_id`, original capture/time kind/uncertainty, processing completion and clock, image dimensions, calibration and 17 joints. Capture may be unknown; bounded-freshness gameplay must then remain unavailable. |
+| `frame_status` | Same tracker session/frame ID, observed person IDs, readiness and cumulative skipped-frame count; empty IDs explicitly means no person. Missing status/pose packets also expire through freshness limits. |
+| `ball_state_request` | `game_session_id`, writer epoch, batch ID, ordered query entries containing a unique query ID and the full controller transaction key. Every valid selected input has its own logical query. Empty entries mean periodic-only work. |
+| `ball_state_response` | Echo exactly writer epoch, batch and query entries; return one atomic snapshot with game session, version, tick, tick duration and ball, or explicit rejection. Match game session/epoch/batch/entries, including periodic-only empty-query batches, so a delayed pre-restart response cannot match a new writer. No cached push replaces this required response. A retry of the same query within its lifetime returns the same retained response. |
+| `state_update` | Same game session, writer epoch and batch ID; exact base version, target tick, final ball state, tracking session and ordered decisions. Commit entries may contain only `HIT` or `MISS`; invalid/stale/error inputs receive direct failed feedback and cannot be committed as normal decisions. Each decision retains its transaction, current sample, selected frame/person, association, source capture times, outcome, swing/cue and event index. Full source clocks, historical sample references and uncertainty are preserved in the trace. |
+| `state_commit_result` | Echo game/session/epoch/batch; acceptance returns original committed version/tick, rejection reports reason. Acceptance is atomic for the full candidate state and ordered event list. |
+| `feedback_result` | Exact originating transaction, outcome and cue; `committed=true` plus game/epoch/batch/event-index/version/tick for hit/miss. Errors have `committed=false`; commit identity fields are unavailable and must not be interpreted as version zero. |
+| `state_publication` | Committed snapshot and ordered event list for the local renderer/debug consumers. Must not make the renderer an authoritative writer. Delivery uses a bounded local TCP subscription; delayed frames may be skipped while event IDs remain deduplicated. |
 
-`event` contains `event_id`, `kind` (`hit` or `miss`), and the controller `transaction`. A hit and a miss both produce an event; no error is encoded as a miss. Tracking states are `tracked`, `inferred`, `unavailable`; adapters must document how backend quality maps into these and which states are eligible for collision. An empty `people` list is an explicit no-body frame; failure to receive frames is a separate stream timeout. Missing required joints are unavailable, never zero-position defaults.
+Outcome enum names in the schema are uppercase; human trace names use their lowercase spelling: `hit`, `miss`, `invalid_input`, `tracking_unavailable`, `stale_input`, `state_conflict`, `timeout`, `overloaded`, `internal_error`. A valid no-collision sample is a miss even if it is not eligible for a physical miss cue. A sensor/communication failure is never a miss.
 
-## Example query, update, and feedback payloads
+The durable gameplay event key is `(game_session_id, writer_epoch, batch_id, event_index)`. The update key is `(game_session_id, writer_epoch, batch_id)`. A physics restart receives a new epoch; these keys cannot collide just because a sequence resets. `swing_id` and `cue_id` are scoped to the physics writer epoch and controller association. Input/feedback deduplication always uses the controller transaction key, not event proximity in time.
 
-These are **payload-only** examples for the corresponding envelopes. Their values are synthetic. A real sender must include the envelope, calibrated input provenance and validated negotiated settings. They illustrate one hit based on version 17 at tick 240; the hit changes version to 18 without advancing the tick. The velocity change is illustrative and does not specify a collision model.
+## Batched query and atomic commit example
 
-`ball_state_response` payload:
+This is an illustrative logical transcript, not serialized JSON or a captured run:
 
-```json
-{
-  "query_id": "query-42",
-  "transaction": {"controller_id": "controller-1", "session_id": "controller-session-a", "request_seq": "42"},
-  "status": "ok",
-  "reason": null,
-  "snapshot": {"game_session_id": "game-session-a", "state_version": "17", "simulation_tick": "240", "tick_duration_us": "5000", "coordinate_frame": "world", "calibration_id": "cal-a", "position_m": [0.1, 1.0, 2.0], "velocity_m_s": [0.0, -1.0, 3.0], "radius_m": 0.033}
-}
+```text
+batch 81, writer epoch 3
+  query 901 -> controller A / boot A7 / request 120
+  query 902 -> controller B / boot B4 / request 225
+ball_state_response(batch 81, queries [901,902], version 17, tick 240)
+  event 0 evaluates A against version 17 -> candidate A
+  event 1 evaluates B against candidate A -> candidate B
+state_update(batch 81, base 17, target tick 241, final candidate B, events [0,1])
+state_commit_result(batch 81, accepted, committed version 18, tick 241)
+feedback A/request120 -> committed18/event0
+feedback B/request225 -> committed18/event1
 ```
 
-`state_update` payload; the source times belong to different clocks, so the illustrative ages below require the cited mapping records, which are not shown:
-
-```json
-{
-  "update_id": "update-42",
-  "writer_epoch": "3",
-  "game_session_id": "game-session-a",
-  "base_state_version": "17",
-  "target_simulation_tick": "240",
-  "transaction": {"controller_id": "controller-1", "session_id": "controller-session-a", "request_seq": "42"},
-  "ball": {"coordinate_frame": "world", "calibration_id": "cal-a", "position_m": [0.1, 1.0, 2.0], "velocity_m_s": [1.0, 2.0, -5.0], "radius_m": 0.033},
-  "event": {"event_id": "physics-session-a:event-42", "kind": "hit", "transaction": {"controller_id": "controller-1", "session_id": "controller-session-a", "request_seq": "42"}},
-  "provenance": {
-    "imu_sample_ids": ["1042"], "tracking_session_id": "tracking-session-a", "skeleton_frame_ids": ["300"], "person_id": "body-2", "association_version": "1", "calibration_id": "cal-a",
-    "imu_captures": [{"capture_time_us": "1000000", "clock_id": "controller-monotonic-a", "capture_boundary": "sample-ready estimate"}],
-    "skeleton_captures": [{"capture_time_us": "7000000", "clock_id": "camera-a", "capture_boundary": "backend frame boundary"}],
-    "clock_mapping_ids": ["map-controller-a", "map-camera-a"], "imu_age_us": "12000", "skeleton_age_us": "15000", "alignment_error_us": "3000", "uncertainty_us": "1000"
-  }
-}
-```
-
-`state_commit_result` payload:
-
-```json
-{
-  "update_id": "update-42", "writer_epoch": "3", "game_session_id": "game-session-a",
-  "transaction": {"controller_id": "controller-1", "session_id": "controller-session-a", "request_seq": "42"},
-  "status": "accepted", "state_version": "18", "simulation_tick": "240", "reason": null
-}
-```
-
-An invalid-tracking `feedback_result` from a different transaction needs no fabricated state or event:
-
-```json
-{
-  "transaction": {"controller_id": "controller-1", "session_id": "controller-session-a", "request_seq": "43"},
-  "outcome": "tracking_unavailable", "reason": "Required playing-hand joint is unavailable",
-  "event_id": null, "game_session_id": null, "state_version": null, "simulation_tick": null, "provenance": null,
-  "feedback": {"led_pattern": "tracking_fault", "intensity": 0.0, "duration_ms": 0}
-}
-```
-
-Zero motor duration here means no motor activation; a separately configured LED fault pattern is requested. No motor strength, pin, frequency, or LED color is fixed by these examples.
+Intermediate candidates are not separately committed versions. Both decisions record common base 17 and their event order. All admitted query entries must appear in the decisions or be explicitly rejected before submission; no controller ID may disappear from accounting. If validation changes during computation, rebuild the candidate deterministically without invalid entries and return their explicit errors; never keep later calculations based on a removed earlier hit. Unknown partial acceptance is forbidden.
 
 ## Matching, bounds, and expiry
 
-Match controller results by the complete `transaction`, queries by `query_id` plus expected session, updates by `update_id` plus game session/writer epoch, and display effects by `(game_session_id, event_id)`. The session-qualified event ID prevents collisions across physics restarts. A matching receipt acknowledgement, if later added, cannot terminate an input transaction. Only a valid `feedback_result` does so; a local deadline can instead terminate it as a recorded failure.
+The [profile](../spec/reference-profile.json) is authoritative for proposed numeric settings. Controller pending capacity is 16 (80 ms at 200 Hz, greater than the 50 ms expiry); Pi admission is four per controller; batch maximum eight with at most two per controller; one state batch in flight; retained IMU history 256/controller and poses eight/person. These queues serve different purposes and must not be conflated.
 
-Proposed initial resource caps, to be measured and revised together:
+Controller inputs are sent once, with no live application retransmission. Missing data becomes a timeout or a gap; UDP checksum success or Wi-Fi MAC acknowledgement is not an application result. The Pi caches terminal results for duplicate requests while retained. The controller never actuates a duplicate or expired feedback result.
 
-| Resource | Initial proposal | On exhaustion |
-| --- | --- | --- |
-| Controller pending table | 8 transactions per controller | Assign/record the attempt; reject locally as `overloaded` |
-| Physics input queue | 8 entries per controller; at most four active controllers | Return correlated `overloaded`; never silently evict an admitted request |
-| Skeleton history | 4 frames per tracked person | Discard oldest, count discard, then apply normal freshness tests |
-| Physics state operations | 1 outstanding query or update operation | Serialize; bounded input queues expose backlog |
-| Wire payload | 65,536 bytes | Reject/close malformed connection; record framing failure |
+Ball query retries once after 2 ms, expires after 5 ms. Commit resends the exact original payload after 2 and 4 ms; after 8 ms without resolution, pause the writer and use control-plane status recovery. Do not start a new state batch while the commit is uncertain. Every stage retains the same local deadlines; retries never extend the controller's 50 ms expiry. Query expiry/ambiguity timers are local durations, not unsynchronized remote deadlines.
 
-All of these are proposed caps, not implementation defaults. Finite timeout, capture-age, alignment, mapping uncertainty, reconnect, deduplication retention, log-buffer, output-queue and maximum-actuation limits remain **open run parameters**. Setup must fail rather than silently use an unspecified bound. Do not derive a full application deadline by adding 25 ms and 15 ms: intermediate acquisition waiting, ball query and scheduling may exceed either provisional sub-budget.
+Retain query/commit deduplication records for 2 s and up to 512 batches; at 200 batches/s this covers 400 batches plus headroom. If full before time retention expires, reject/pause new state work rather than evict an outcome needed for recovery. A status lookup after expiry returns UNKNOWN_BATCH; it does not prove the update was never committed. Recover/reset the game session before resuming if the outcome cannot be established. A current ball snapshot alone cannot answer whether a particular event committed.
 
-Record a controller-local request deadline and component-local operation deadlines. Remote stages use their own duration budgets; raw controller deadlines cannot be compared with Pi time without a validated mapping. Any accepted budget transfer must account for clock uncertainty. Suspend application work after an expired query, stale pose, invalid mapping, or lost session rather than reusing a cached state as if fresh.
+## Control operations and lifecycle
+
+`hello` announces role (`controller`, `physics`, `tracking`, `game`, `debug`, `renderer`), profile/schema hashes and receive endpoint; `hello_result` accepts explicitly. Every new process session repeats readiness and clock setup. A reconnect of the same physics session may resume its epoch only if the game confirms it has not admitted a replacement writer; the old transport is invalidated. New physics sessions fence old epochs.
+
+`Association` binds one controller session to one tracker-session/person, playing hand, slot and calibration; its transaction's sequence is zero because this control record identifies a controller, not a measurement. Increment association version on every change. Physics first suspends the old binding and explicitly rejects old queued work. Send an installation with `command_id`; the controller installs it while suspended and returns the same association/command with `response=true` and `accepted=true`, or an explicit rejection. Only after matching acceptance and valid clocks/calibration does physics send a correlated `resume` command. Until that barrier completes, no normal gameplay input is eligible. Retry installation idempotently by command ID; TCP delivery alone is not installation acceptance. Tracking restart, player ambiguity or re-pairing repeats this barrier. No automatic reassignment to a nearby person is permitted.
+
+During that barrier, the controller retires all pending records and cancels queued cues tied to the old association/calibration, retaining their failure reasons. Every pending entry stores the association/calibration used at transmission; a matching late transaction is still ineligible if that binding has changed. Physics resolves or explicitly invalidates old in-flight batches before resuming the new mapping. Feedback without a live pending entry cannot actuate, even if its controller boot session has not changed.
+
+Allowed `ControlCommand.operation` values are `configure`, `ready`, `pause`, `resume`, `reset_session`, `commit_status`, `subscribe_state`, `run_start`, `run_stop`. Every command has a unique command ID and matching result. Configuration is a versioned UTF-8 JSON object containing profile hash, endpoint map, calibration transform/rules and limit overrides; validate against the published profile and calibration requirements before accepting. `commit_status` identifies game/epoch/batch and returns its cached `state_commit_result`, or UNKNOWN_BATCH. `pause` admits no new gameplay work; `reset_session` invalidates old snapshots and pending batches; neither directly creates competing physics updates.
+
+Clock exchanges carry three endpoint times; the initiator records the fourth on full receipt. Preserve domain/session and quantify asymmetry/offset uncertainty. Refresh the fitted mapping every 1 s and expire it after 5 s or excessive uncertainty. Do not assume half the RTT is a one-way delay. The mapping algorithm and measured uncertainty are acceptance gates, not a claimed implementation.
 
 ## Error and lifecycle behavior
 
-Terminal outcomes are `hit`, `miss`, `invalid_input`, `tracking_unavailable`, `stale_input`, `state_conflict`, `timeout`, `overloaded`, and `internal_error`. A local connection loss is also recorded as a failure reason, never a miss. Tracking failures, invalid calibration, clock uncertainty and outdated input are distinct diagnostic reasons even when sharing an outcome category.
+Return one correlated terminal result for every parseable admitted measurement, including misses and invalid inputs. For a malformed request without recoverable identity, count the receiver failure; the controller's own pending key expires locally. Log every input not admitted, dropped log record, expired query, late/duplicate/unmatched response and suppressed cue. Retain the original local terminal outcome even when a later commit is discovered; do not fabricate a second completion.
 
-- For every parsed measurement with valid correlation, send one terminal correlated result, including validation failures and misses. Retain a cached result for bounded duplicate replay. Pending duplicates attach to the existing operation, not a second calculation.
-- A malformed envelope without recoverable identity cannot receive a fabricated correlation key. Count it at the receiver; the originating controller's pending record expires, preserving end-to-end accounting.
-- Each generated controller transaction must end in a response or a counted local terminal failure. Network failure can prevent response delivery; never claim guaranteed delivery or omit these requests from latency reporting.
-- A late response is counted, linked to the expired record, and discarded for actuation. A duplicate result cannot trigger a second pulse. Unmatched responses are counted with reason.
-- Missing or delayed frames invalidate hit eligibility according to declared tracking/age limits. Out-of-order skeleton frames may enter retained history only if still useful; never roll back the latest displayed frame silently.
-- Reconnect negotiates sessions again. Preserving a process session can permit replay of the same still-live transaction, but only while deduplication retention is known valid. For physics, resume the existing writer epoch only when the game confirms the same process session still owns it and no replacement writer was admitted; resume also invalidates the previous transport connection. A new process or replacement writer receives a new epoch. Boot/process restart always changes session. No retry silently creates a new request identity for the same uncertain event. If epoch resumption fails while a commit is uncertain, pause and recover/reset the session rather than reissue the candidate as new work.
-- A game/physics restart or ambiguous commit follows [state recovery](physics.md#conflicts-and-ambiguous-commits). Positive hit/miss feedback waits for commit acceptance. The controller may time out while a commit is still being resolved; outcome accounting must retain both facts.
-- Controller/person reassociation and calibration changes invalidate old work explicitly. Tracking identity loss requires revalidation, not automatic reassignment to the nearest body.
+`Cue.electrical_eligible=false` and `CUE_NONE` mean no per-transaction actuation is expected. Continuous status LED state is not an electrical pulse for every sample. Eligible cues are bounded semantic hits or completed missed swings; fault behavior is distinct. Normalize requested intensity to [0,1], cap it by characterized driver limits, and measure actual drive onset separately. See [controller](controller.md) and the [debug trace contract](debugging.md).
 
-The [controller feedback policy](controller.md#proposed-feedback-semantics) defines patterns and safe output scheduling. `intensity` is a requested normalized drive level, not a measured vibration strength. Clamp to negotiated hardware limits and log the applied values. No error should silently reuse a hit/miss pattern.
-
-## Implementation gates
-
-Before coding against this proposal, resolve the bootstrap schema, hardware-safe feedback profiles, exact sample/joint limits and ranges, timing/memory limits, pairing control path, endpoint/security profile, and log schema. Then implement shared schema fixtures and cross-component tests, including malformed/oversize payloads, duplicate keys, counter precision, stale sessions, duplicate commits and complete failure accounting. The current checker validates JSON syntax only; it is not a wire schema validator.
+This schema is reviewable design source. Generated codecs, nanopb bounds/options, wire-size fixtures, exact configuration JSON schema, authentication extensions and runtime validation remain implementation work. Do not advertise interoperability until codec round-trip and maximum-size tests run across ESP32, Pi and Windows.

@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -17,6 +18,7 @@ REPOSITORIES = (
     "motion-tennis-game-engine",
     "motion-tennis-physics-engine",
     "motion-tennis-controller",
+    "debug-units",
 )
 REQUIRED_DOCS = (
     "overview.md",
@@ -35,6 +37,10 @@ REQUIRED_DOCS = (
     "troubleshooting.md",
     "roadmap.md",
     "adr/README.md",
+    "master-plan.md",
+    "networking.md",
+    "tracking-stack.md",
+    "debugging.md",
 )
 EXCLUDED_DIRECTORIES = {".git", ".venv", "node_modules", "__pycache__"}
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
@@ -55,6 +61,27 @@ def slugify(text):
 
 def reject_json_constant(value):
     raise ValueError("Non-finite JSON constant: " + value)
+
+
+def finite_json_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError("Non-finite JSON number: " + value)
+    return number
+
+
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON key: " + key)
+        result[key] = value
+    return result
+
+
+def read_json(source):
+    return json.loads(source, parse_constant=reject_json_constant,
+                      parse_float=finite_json_float, object_pairs_hook=unique_json_object)
 
 
 def github_remote(path):
@@ -152,7 +179,7 @@ class Checker:
         if language == "json":
             self.counts["JSON examples"] += 1
             try:
-                json.loads(content, parse_constant=reject_json_constant)
+                read_json(content)
             except (json.JSONDecodeError, ValueError) as exc:
                 self.error(path, line, "Invalid JSON example: " + str(exc))
         elif language == "mermaid":
@@ -294,18 +321,102 @@ class Checker:
             if path.is_relative_to(root / "docs") and path.resolve() not in reachable:
                 self.error(path, 1, "Documentation page is not reachable from the central README")
 
+    def reference_profile(self):
+        path = self.documentation / "spec" / "reference-profile.json"
+        protobuf = self.documentation / "spec" / "motion.proto"
+        if not protobuf.is_file():
+            self.error(protobuf, 1, "Required proposed Protobuf contract is missing")
+        try:
+            profile = read_json(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            self.error(path, 1, "Cannot read finite, unambiguous profile JSON: " + str(exc))
+            return
+        if not isinstance(profile, dict):
+            self.error(path, 1, "Reference profile must be a JSON object")
+            return
+        self.counts["reference profiles"] += 1
+
+        def value(section, key):
+            parent = profile if section is None else profile.get(section)
+            candidate = parent.get(key) if isinstance(parent, dict) else None
+            if type(candidate) is not int or candidate <= 0:
+                self.error(path, 1, "Expected positive integer: " + ".".join(filter(None, (section, key))))
+                return None
+            return candidate
+
+        def require(condition, message):
+            if not condition:
+                self.error(path, 1, message)
+
+        names = {
+            "rates": ("controller_hz", "physics_tick_us", "camera_target_hz", "pose_minimum_hz"),
+            "limits": ("udp_payload_bytes", "batch_transactions", "batch_transactions_per_controller",
+                       "physics_queue_per_controller", "controller_pending_transactions",
+                       "dedup_retention_us", "dedup_batches"),
+            "timing_us": ("response_p99_target", "electrical_p99_target", "controller_expiry",
+                          "ball_query_retry", "ball_query_expiry", "commit_retry_1", "commit_retry_2",
+                          "commit_ambiguity_pause", "clock_mapping_refresh", "clock_mapping_maximum_age"),
+        }
+        settings = {key: value(section, key) for section, keys in names.items() for key in keys}
+        players = value(None, "players")
+        if players is None or any(item is None for item in settings.values()):
+            return
+        s = settings
+        require(players <= 4, "Reference profile supports at most four players")
+        require(s["udp_payload_bytes"] <= 1200, "UDP payload exceeds the 1200-byte contract limit")
+        wire_integer_maximum = profile["limits"].get("maximum_wire_uint64")
+        require(wire_integer_maximum == str(2**56 - 1),
+                "Wire uint64 maximum must preserve the eight-byte varint size bound")
+        normal_per_controller = (s["controller_hz"] * s["physics_tick_us"] + 999999) // 1000000
+        require(normal_per_controller <= s["batch_transactions_per_controller"],
+                "Per-controller batch cannot carry the normal samples arriving in one tick")
+        require(players * normal_per_controller <= s["batch_transactions"],
+                "Batch cannot carry the normal player input load per tick")
+        require(s["batch_transactions_per_controller"] <= s["physics_queue_per_controller"],
+                "Per-controller batch limit exceeds its input queue")
+        require(s["batch_transactions"] <= players * s["batch_transactions_per_controller"],
+                "Batch maximum exceeds the sum of its per-controller limits")
+        require(s["controller_pending_transactions"] * 1000000 > s["controller_expiry"] * s["controller_hz"],
+                "Controller pending-table duration must exceed controller expiry")
+        require(s["response_p99_target"] <= s["electrical_p99_target"] <= s["controller_expiry"],
+                "Response target must not exceed electrical target or controller expiry")
+        require(s["ball_query_retry"] < s["ball_query_expiry"], "Query retry must precede query expiry")
+        require(s["commit_retry_1"] < s["commit_retry_2"] < s["commit_ambiguity_pause"],
+                "Commit retry times must increase and precede ambiguity pause")
+        require(s["clock_mapping_refresh"] <= s["clock_mapping_maximum_age"],
+                "Clock mapping refresh interval exceeds its validity age")
+        require(s["pose_minimum_hz"] <= s["camera_target_hz"],
+                "Minimum pose rate exceeds the camera target rate")
+        require(s["dedup_retention_us"] >= s["controller_expiry"],
+                "Deduplication retention is shorter than controller expiry")
+        require(s["dedup_batches"] * s["physics_tick_us"] >= s["dedup_retention_us"],
+                "Deduplication cache cannot retain nominal-rate batches for its declared duration")
+        ports = profile.get("ports")
+        if not isinstance(ports, dict) or not ports:
+            self.error(path, 1, "Reference profile must declare transport ports")
+        else:
+            valid_ports = all(type(port) is int and 1 <= port <= 65535 for port in ports.values())
+            require(valid_ports, "Ports must be integers in 1..65535")
+            if valid_ports:
+                require(len(set(ports.values())) == len(ports), "Reference service ports must be distinct")
+        acceptance = profile.get("acceptance")
+        fraction = acceptance.get("maximum_late_or_failed_fraction") if isinstance(acceptance, dict) else None
+        require(type(fraction) in (int, float) and 0 <= fraction <= 1,
+                "Acceptance failure fraction must be a finite number in 0..1")
+
     def run(self):
         collected = [(path, self.scan(path)) for path in sorted(set(self.markdown))]
         for path, links in collected:
             for line, target in links:
                 self.check_link(path, line, target)
         self.required_content()
+        self.reference_profile()
         print("Checked {} Markdown files in {} available repositories.".format(len(collected), len(self.repo_paths)))
         for key, value in sorted(self.counts.items()):
             print("  {}: {}".format(key, value))
         for skip in sorted(self.skips):
             print("SKIP: " + skip)
-        print("LIMIT: no network checks, complete Markdown parser, Mermaid parser/renderer, runtime schema or hardware validation.")
+        print("LIMIT: no network checks, complete Markdown parser, Mermaid parser/renderer, Protobuf compilation, runtime schema or hardware validation.")
         for error in self.errors:
             print("ERROR: " + error, file=sys.stderr)
         if self.errors:

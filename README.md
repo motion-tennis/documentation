@@ -2,11 +2,11 @@
 
 Motion Tennis is a multiplayer tennis demonstrator for up to four players. The main objective is to make distributed processing, latency, synchronization, data freshness, and measurable timing behavior visible. Sophisticated graphics are secondary.
 
-**Current status:** all five repositories contain documentation and MIT licenses. At the inspection on 2026-10-24, none contained application source, dependencies, build configuration, workflows, or tests. The architecture below is an agreed design; the protocol and consistency mechanisms are proposals awaiting implementation and review. No hardware or latency results are claimed.
+**Current status:** six repositories contain coordinated documentation. `debug-units` also provides an offline trace checker and synthetic integrity tests; the controller, tracking, physics and game runtimes are not implemented. The current reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers, and webcam-first 2.5D gameplay. Detailed stacks and budgets are proposed, unverified implementation targets.
 
 ## Start here
 
-1. Read the [overview and terminology](docs/overview.md) and [requirements](docs/requirements.md).
+1. Start with the [master plan](docs/master-plan.md), [machine-readable reference profile](spec/reference-profile.json), [overview](docs/overview.md) and [requirements](docs/requirements.md).
 2. Follow the [architecture and complete transaction](docs/architecture.md), including the mandatory physics-to-game ball-state request and response.
 3. Use [development setup](docs/development.md) to obtain the repositories and distinguish today's documentation checks from the proposed integrated startup.
 4. Before implementing interfaces, review the [protocol](docs/protocol.md), [ball-state consistency](docs/physics.md), and [timing and measurement](docs/timing.md).
@@ -19,23 +19,24 @@ These links derive from the inspected Git remotes. All local checkouts track `or
 | Repository | Agreed software role | Target physical device |
 | --- | --- | --- |
 | [documentation](https://github.com/motion-tennis/documentation) | Shared specifications, decisions, setup, and validation guidance | Development workstation |
-| [motion-tennis-controller](https://github.com/motion-tennis/motion-tennis-controller) | IMU measurements, transaction timing, LED and haptic feedback | ESP32 handheld, one per player |
-| [motion-tennis-camera-tracking](https://github.com/motion-tennis/motion-tennis-camera-tracking) | Continuous skeleton acquisition and tracking quality | Kinect v2 attached to a suitable host PC |
-| [motion-tennis-physics-engine](https://github.com/motion-tennis/motion-tennis-physics-engine) | Sensor combination, hit decisions, ball-state calculations | Raspberry Pi |
-| [motion-tennis-game-engine](https://github.com/motion-tennis/motion-tennis-game-engine) | Committed ball-state storage, state queries, UI, visualization | PC, intended Linux environment |
+| [motion-tennis-controller](https://github.com/motion-tennis/motion-tennis-controller) | IMU measurements, transaction timing, LED and haptic feedback | Four wireless battery ESP32 handhelds; S3 reference proposed |
+| [motion-tennis-camera-tracking](https://github.com/motion-tennis/motion-tennis-camera-tracking) | Continuous webcam pose estimation and identity tracking | Windows RTX 5080 laptop; RTMO-m reference proposed |
+| [motion-tennis-physics-engine](https://github.com/motion-tennis/motion-tennis-physics-engine) | Temporal fusion, hit decisions, sole ball-state calculations | Available Raspberry Pi 3 Model B |
+| [motion-tennis-game-engine](https://github.com/motion-tennis/motion-tennis-game-engine) | Committed ball-state service and separate visualization | Windows laptop; native C++/SDL3 reference proposed |
+| [debug-units](https://github.com/motion-tennis/debug-units) | Offline trace audit now; live collection, viewer and fault harness planned | Windows analysis host; bounded emitters on all devices |
 
-Tracking and visualization may share one PC but remain separate software components and repositories. Linux skeleton tracking is an unresolved dependency; see [tracking integration](docs/tracking.md).
+Tracking, state service, visualization and debug collection share the laptop as separate software components. Webcam-first 2.5D and Windows deployment supersede the earlier Kinect/Linux assumptions. Kinect/depth/stereo remains a later true-3D option, not a prerequisite. See [tracking integration](docs/tracking.md).
 
 ## Documentation map
 
 | Area | Reference |
 | --- | --- |
 | Scope, evidence, language | [Overview](docs/overview.md), [requirements](docs/requirements.md) |
-| Devices and data flow | [Architecture and deployment](docs/architecture.md), [hardware](docs/hardware.md) |
+| Devices and data flow | [Master plan](docs/master-plan.md), [architecture](docs/architecture.md), [hardware](docs/hardware.md), [networking](docs/networking.md) |
 | Component design | [Controller](docs/controller.md), [tracking](docs/tracking.md), [physics](docs/physics.md), [game engine](docs/game-engine.md) |
-| Shared contracts | [Protocol](docs/protocol.md), [coordinate systems, calibration, and clocks](docs/coordinates-and-time.md) |
+| Shared contracts | [Protocol](docs/protocol.md), [Protobuf schema](spec/motion.proto), [reference profile](spec/reference-profile.json), [coordinate systems, calibration, and clocks](docs/coordinates-and-time.md) |
 | Measurements | [Timing requirements and methodology](docs/timing.md) |
-| Development and validation | [Setup](docs/development.md), [testing](docs/testing.md), [troubleshooting](docs/troubleshooting.md), [documentation validation record](docs/validation.md) |
+| Development and validation | [Setup](docs/development.md), [tracking stack](docs/tracking-stack.md), [debug environment](docs/debugging.md), [testing](docs/testing.md), [troubleshooting](docs/troubleshooting.md), [validation record](docs/validation.md) |
 | Future work and decisions | [Roadmap and open decisions](docs/roadmap.md), [architecture decision records](docs/adr/README.md) |
 
 ## Status vocabulary

@@ -19,20 +19,21 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. Its f
 | Repository | Role and agreed hardware |
 | --- | --- |
 | `documentation` | Central architecture, requirements, interfaces, measurement methods, development guidance and decisions |
-| `motion-tennis-controller` | ESP32 handheld with Wi-Fi, IMU, LED and vibration motor; captures measurements and operates feedback |
-| `motion-tennis-camera-tracking` | Continuous Xbox One Kinect / Kinect v2 skeleton acquisition; body/joint data actively informs player and racket movement |
-| `motion-tennis-physics-engine` | Raspberry Pi service combining controller, skeleton and ball-state inputs to calculate hit results and ball changes |
-| `motion-tennis-game-engine` | PC state storage, snapshot responses, result application, UI and visualization; Linux is the intended environment |
+| `motion-tennis-controller` | Four wireless battery ESP32 handhelds; S3/BMI270 reference proposed; captures samples and operates LED/haptic feedback |
+| `motion-tennis-camera-tracking` | Continuous webcam pose estimation on the Windows RTX 5080 laptop; active 2.5D body/joint input, later true 3D |
+| `motion-tennis-physics-engine` | Available Raspberry Pi 3 Model B; temporal fusion, ordered physics batches and sole ball-state calculations |
+| `motion-tennis-game-engine` | Windows committed-state service and separate renderer/UI; C++/SDL3 reference proposed |
+| `debug-units` | Offline trace checker implemented; runtime collection, viewer, simulator/replay and fault injection planned |
 
 Tracking and visualization may share one physical PC while remaining separate software components and repositories. Handheld controllers are ESP32 devices, not Raspberry Pis. Do not assume specific boards, sensors, motor drivers, pins, runtimes or rendering frameworks without repository evidence.
 
-The Kinect skeleton backend and its OS requirements remain open until selected and verified. `libfreenect2` supplies acquisition/registration, not skeleton tracking by itself. Do not reduce Kinect to a presence detector or imply that a controller transaction triggers a new camera exposure.
+The current [master plan](docs/master-plan.md) supersedes Kinect-only and Linux-first PC assumptions. The user selected webcam-first 2.5D play, later true 3D, the available Pi 3 B and wireless battery operation. RTMO-m and controller hardware/software details remain proposed until verified. A single RGB camera does not provide unambiguous metric wrist depth. Preserve active pose/IMU fusion and continuous camera acquisition independent of transactions. Kinect/depth/stereo are later alternatives; `libfreenect2` alone is not a skeleton tracker.
 
 ## Inspect evidence and label status
 
 Before editing, inspect applicable instructions, Git status, remotes and branches, relevant source/configuration/build files, and existing documentation. Preserve uncommitted work and repository conventions. Derive repository URLs and branch links from actual Git configuration; do not invent owners, default branches or deployment URLs.
 
-At the initial inspection on 2026-10-24, all five repositories contained only placeholder READMEs and MIT licenses. This work added documentation and a checker, not working runtime components. Reinspect current files before making implementation claims; update historical status statements when real implementations arrive.
+At the initial inspection on 2026-10-24, the original five repositories contained only placeholder READMEs and MIT licenses. The six-repository masterplan revision adds shared specifications and real offline trace tools/tests in `debug-units`, not gameplay runtimes. Reinspect current files before implementation claims; update historical status statements when code arrives.
 
 Use these labels consistently:
 
@@ -60,6 +61,8 @@ Keep the complete transaction explicit in relevant descriptions and diagrams:
 
 **Never remove or replace the required ball-state request and response during cleanup.** The additional proposed commit acknowledgement does not replace either arrow. Invalid input or unavailable tracking may terminate early with a correlated error; do not fabricate a physics decision.
 
+The current proposed protocol batches up to eight logical queries (at most two per controller) per 5 ms release, with one explicit query key per input and one common versioned snapshot. Each IMU interrupt remains a distinct transaction. Atomic ordered batch commit preserves per-input results; periodic-only batches keep the ball moving. Do not silently decimate samples or turn a shared datagram into an uncorrelated transaction. Use [reference-profile.json](spec/reference-profile.json) and [motion.proto](spec/motion.proto) as canonical proposed values/types; UDP/Protobuf live traffic supersedes the earlier TCP/JSON proposal.
+
 The game stores committed ball state; physics calculates changes. Keep the [proposed consistency model](docs/physics.md) explicit: one serialized physics writer for periodic and controller work, version-checked commits, session/epoch fencing, duplicate handling, and hit/miss feedback after commit acceptance. This mechanism remains proposed until implemented. Avoid two components independently advancing conflicting authoritative states; rendering interpolation is not a physics commit.
 
 Preserve transaction/session/sample/frame/event identities and original timestamps. Explain ordering, stale snapshots, conflicting updates, ambiguous commits, reconnection and periodic movement between controller events. Recheck freshness, association, calibration and expiry after network waiting and before submission. Tracking failures, invalid inputs, overload and communication errors must never silently become ordinary misses. A receipt acknowledgement is not a completed gameplay result.
@@ -74,7 +77,8 @@ Follow [timing requirements](docs/timing.md) and [coordinate and clock conventio
 - Application response time is `tr - t0`; time to electrical feedback is `t1 - t0`. These same-ESP32 differences do not require cross-device clock synchronization.
 - Include queueing, processing, pose waiting, the required ball query/response and any proposed commit wait in the measured transaction. Distinguish sensor latency before `t0`, earlier skeleton acquisition, electrical activation, physical vibration onset and display photons.
 - Preserve capture, arrival, processing-completion and simulation times separately. Cross-device comparisons require explicit clock mapping with uncertainty; never infer one-way delay as half the RTT.
-- Treat 200 Hz controller processing, a 5 ms physics tick, 25 ms from IMU boundary to physics receipt, and 15 ms from decision completion to electrical feedback as provisional targets, not demonstrated guarantees or a complete-transaction budget.
+- Current provisional targets are 200 Hz measurements per controller, a 5 ms tick, batch service p99 at most 4 ms, application response p99 at most 30 ms, eligible electrical cue p99 at most 40 ms, and local controller expiry at 50 ms. The earlier 25 ms uplink value is historical; the 15 ms decision-to-electrical sub-path target remains provisional. None is a hard guarantee. This Windows/GPU/Wi-Fi profile does not prove hard end-to-end real-time behavior.
+- All transactions receive outcome accounting, but haptic cues occur only for semantic hits/completed missed swings. Noneligible samples have no fabricated `t1`. Keep original source timestamps and historical IMU/pose alignment; arrival freshness is not capture freshness.
 - Account for every started measurement, including misses, invalid inputs, drops, rejected/late responses, timeouts and pending observations. Report sample counts, median, tail percentiles, observed maximum, deadline misses and failures. Timeouts are censored observations, not fabricated completion latencies.
 - Timer resolution is not measurement accuracy. An observed maximum is not a proven worst-case bound. Never claim hardware, networking, tracking or timing validation without actual evidence.
 

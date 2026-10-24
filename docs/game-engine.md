@@ -1,39 +1,31 @@
-# Game-engine integration and visualization
+# Windows state service and game visualization
 
-[Documentation home](../README.md) · [Architecture](architecture.md) · [Physics consistency](physics.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Protocol](protocol.md) · [Physics](physics.md)
 
-**Agreed design:** the game runs on a PC, intended Linux; stores and returns ball state; applies physics results; and displays players, ball motion, and hit/miss effects. **Implemented:** no renderer, language, framework, executable or tests are present. Selecting Unity, Godot, Unreal, a custom renderer, or another framework remains **open**.
+**User-confirmed host:** Windows laptop with RTX 5080. **Proposed stack:** C++20/CMake native state service and a separate simple C++/SDL3 renderer. [SDL3](https://wiki.libsdl.org/SDL3/FrontPage) supports native C++ use and Windows; no game framework or application is installed/implemented by this documentation change. Linux portability can be pursued later; it is not the primary deployment for this profile.
 
-## Proposed state service
+## Separate state service from rendering
 
-Keep state handling independent of rendering work so a slow frame does not intentionally block ball-state responses. This does not guarantee isolation from shared CPU/GPU/OS load; measure it.
+Keep the state service in a separate process from GPU inference and rendering. Its nonblocking socket loop responds independently of graphics-frame timing. It owns a single immutable current snapshot and a bounded query/commit deduplication cache. No textures, neural inference, disk logging or UI event loop executes on that state path. This isolation reduces avoidable coupling; Windows scheduling still prevents a hard end-to-end timing guarantee.
 
-- Answer every valid `ball_state_request` with one atomic snapshot in `ball_state_response`, preserving the query identity and returning game session, state version, simulation tick and tick duration.
-- Accept `state_update` only from the current writer epoch, for the current game session and exact base version. Validate schema, units, finite values, calibration and monotonic tick before committing.
-- Store the candidate snapshot and event atomically; then return `state_commit_result`. A transport receipt does not imply the update committed.
-- Return the recorded outcome for duplicate update IDs and reject changed duplicate payloads. A same-process reconnect may resume its current writer epoch; a restarted or replacement physics session fences the old writer before accepting writes.
-- Publish the committed version to the renderer. Rendering must not independently integrate authoritative physics.
+Accept the physics writer through control setup with matching profile/schema hashes and a fresh epoch. For each required `ball_state_request`, return one atomic snapshot and exactly echo every transaction/query entry. A duplicate query within retention returns its original snapshot, not an unmarked newer response. A new query gets the current state. Track query send/receive times independently from render timestamps.
 
-These are proposed interface boundaries, not source modules that already exist. [Protocol](protocol.md) owns the shared field definitions; [physics](physics.md) owns the proposed ordering and recovery model.
+For `state_update`, validate sender/epoch/game session, exact base version, target tick, calibration, complete bounded event list and finite ball state. Commit all events and final state atomically or reject all. Increment state version once per batch. Return `state_commit_result` only after that operation. The renderer may never independently advance the authoritative ball.
 
-## Proposed display behavior
+Cache outcomes for 2 s, up to 512 batches; if retention cannot be honored, apply explicit backpressure/pause. Duplicate identical updates return the cached original result. A changed payload with the same update key is invalid. `commit_status` on the control connection resolves an uncertain update or returns unknown; a current snapshot cannot substitute for that answer. Fence old epochs after writer replacement and new game sessions after service restart.
 
-Start with a simple court, player skeleton/racket poses, and ball path. A continuous tracking display subscription is proposed so body motion is visible between transactions. Label invalid/inferred joints and hide or freeze stale avatars with a visible tracking warning. Never show an unqualified active player when its controller/person association is invalid.
+## Renderer and operator UI
 
-Show hit and miss effects only for committed gameplay events and deduplicate by `(game_session_id, event_id)`; event IDs embed their generating physics session to prevent collisions after a writer restart. Show rejected/stale/invalid/timeout outcomes as diagnostic failures, not misses. Controller feedback arrival and scene presentation are separate observations; a committed event may be displayed even when the controller timed out, and the UI should expose that discrepancy.
+The renderer consumes bounded `state_publication` messages on a local subscription and may interpolate committed snapshots for a 60 Hz presentation target. It uses ordered event IDs `(game_session_id, writer_epoch, batch_id, event_index)` to avoid duplicate effects. It does not extrapolate a visual guess back into game authority. Keep recent events in the state-service history so skipped visual snapshots do not erase measurement provenance.
 
-An initial diagnostics overlay should include:
+Display a simple court, four lane/player assignments, 2.5D racket/ball motion, hit/miss effects and explicit faults. Subscribe to tracking separately for smooth avatar display; old/ambiguous joints are marked stale and excluded from collision eligibility. The model's normalized image coordinates are converted using the same calibration profile; no guessed 3D depth is displayed as measured geometry.
 
-- Controller connection and session, player association, tracking quality and frame age.
-- Latest committed game session, state version, simulation tick and simulation lag.
-- Transaction/event ID, hit/miss/error, selected skeleton frame and IMU samples.
-- Queue depth, dropped inputs, timeouts, stale frames, conflicts and clock uncertainty.
-- Application response distributions reported by controllers, with sample counts and failure counts.
+The UI must show connection/battery state, person/controller/hand association, pose age and prediction horizon, clock uncertainty, current game version/tick, simulation lag, queue occupancy, transaction/event IDs, response and electrical timing populations, timeouts and tracking failures. UI error indicators may use trace/status subscriptions; missing diagnostic updates are shown as stale rather than fabricated healthy status. Collecting these diagnostics cannot block the state service.
 
-Displaying `tr - t0` from a controller report is valid; calculating that value by subtracting PC time from ESP32 time is not. PC update-received, commit, render-submit, and presentation timestamps have their own clock domain. A displayed latency overlay is not a measurement of photons leaving the display.
+UI pairing, pause, resume, serve and reset use the versioned control plane. Physics performs authoritative motion changes; reset may instead create a fresh game session, invalidating pending work. The pairing UI requires deliberate confirmation and cannot silently attach a controller to whichever person is nearest.
 
-## Proposed lifecycle and startup
+## Presentation and integration evidence
 
-Create a fresh game session and initial ball snapshot before accepting physics writes. Negotiate a single physics writer, then wait for ready controllers, association/calibration, and usable skeletons before enabling play. Keep diagnostic UI available when gameplay is paused. UI resets/serves go through the physics writer or create a new fenced session; they do not create a second state integrator.
+Trace application update receipt, commit completion, render submission and, when available, actual presentation separately. Photodiode/display-patch experiments are needed to measure photons; neither snapshot commit nor a render call proves visible output. A game commit can be displayed after the controller timed out; keep that discrepancy visible instead of rewriting the controller outcome.
 
-See [development](development.md) for the proposed integrated sequence. There is no runnable game command, asset pipeline, build dependency or screen capture yet. Future tests must exercise snapshot atomicity, CAS rejection, duplicate events, restart fencing, headless state handling where feasible, and CPU/render-load effects on the complete transaction.
+Implementation starts with headless synthetic query/commit tests and maximum-size schema fixtures, then adds the minimal renderer. Benchmark four-player batched state traffic while RTMO inference and rendering compete on the laptop. Require batch-service capacity and correct rejection/recovery before optimizing visuals. Real build/run commands and dependency locks must accompany source implementation; none exist yet.

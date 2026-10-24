@@ -2,7 +2,7 @@
 
 [Decision index](README.md)
 
-**Status:** Agreed design from the project brief, recorded 2026-10-24. **Implementation:** absent at repository inspection.
+**Status:** Historical agreed design from the initial brief, recorded 2026-10-24. Hardware/deployment portions are superseded by [ADR 0005](0005-webcam-wireless-pi3-masterplan.md): webcam-first 2.5D, Windows laptop and Pi 3 Model B. The explicit ball-state request/response and active pose fusion remain required. **Implementation:** runtime absent.
 
 ## Context
 

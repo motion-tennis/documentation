@@ -2,7 +2,7 @@
 
 [Decision index](README.md)
 
-**Status:** Transport proposed; skeleton backend open, 2026-10-24. **Implementation:** absent.
+**Status:** Superseded historical proposal. [ADR 0005](0005-webcam-wireless-pi3-masterplan.md) replaces TCP/JSON live traffic with UDP/Protobuf and chooses a webcam-first Windows/RTMO reference. This page preserves earlier reasoning; it is not the current implementation contract. **Implementation:** absent.
 
 ## Context
 
@@ -12,7 +12,7 @@ No existing protocol, dependency list or tracker is available to standardize. Te
 
 Start contract review with persistent TCP carrying length-prefixed UTF-8 JSON, explicit version/session/transaction identities and bounded queues. This favors inspectable messages and simple framing for initial experiments. TCP head-of-line delays and parsing cost must be measured. UDP or compact binary encoding remain alternatives if evidence justifies them; changing transport cannot remove application correlation, bounds, freshness, or the required ball query.
 
-Do not name `libfreenect2` as a skeleton tracker: it supplies sensor acquisition/registration. Select and validate either a Linux acquisition-plus-estimator route or a compatible Microsoft SDK body-tracking host route before documenting runnable tracking setup. See [tracking evidence and primary sources](../tracking.md#backend-selection). The intended game PC environment remains Linux unless implementation evidence establishes another requirement.
+The original alternatives were Linux acquisition plus a separate estimator or a compatible Microsoft SDK body-tracking host; `libfreenect2` alone is not a skeleton tracker. Those were unimplemented options, not installed dependencies. See the current [webcam tracking stack](../tracking-stack.md) for the replacement direction.
 
 ## Consequences
 

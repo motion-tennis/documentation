@@ -1,0 +1,81 @@
+{
+  "profile_id": "webcam-pi3-wireless-v1",
+  "status": "proposed_unverified_reference",
+  "protocol_version": "0.2-proposed",
+  "players": 4,
+  "hardware": {
+    "physics_host": "Raspberry Pi 3 Model B",
+    "application_host": "Windows laptop with user-reported NVIDIA RTX 5080",
+    "controller_candidate": "ESP32-S3-DevKitC-1-N8R8",
+    "imu_candidate": "BMI270 over SPI",
+    "camera": "USB webcam; exact Facecam generation or alternative requires validation",
+    "position_mode": "plane_2_5d",
+    "wireless_battery_required": true
+  },
+  "rates": {
+    "controller_hz": 200,
+    "physics_tick_us": 5000,
+    "camera_target_hz": 60,
+    "pose_minimum_hz": 30,
+    "render_target_hz": 60,
+    "inference_width": 640,
+    "inference_height": 640
+  },
+  "limits": {
+    "udp_payload_bytes": 1200,
+    "maximum_wire_uint64": "72057594037927935",
+    "batch_transactions": 8,
+    "batch_transactions_per_controller": 2,
+    "physics_queue_per_controller": 4,
+    "controller_pending_transactions": 16,
+    "imu_history_samples_per_controller": 256,
+    "pose_history_frames_per_person": 8,
+    "capture_queue_frames": 1,
+    "state_batches_in_flight": 1,
+    "catchup_ticks": 4,
+    "dedup_retention_us": 2000000,
+    "dedup_batches": 512,
+    "maximum_stream_frame_bytes": 65536
+  },
+  "timing_us": {
+    "response_p99_target": 30000,
+    "electrical_p99_target": 40000,
+    "decision_to_electrical_p99_target": 15000,
+    "controller_expiry": 50000,
+    "batch_service_p99_target": 4000,
+    "ball_query_retry": 2000,
+    "ball_query_expiry": 5000,
+    "commit_retry_1": 2000,
+    "commit_retry_2": 4000,
+    "commit_ambiguity_pause": 8000,
+    "simulation_lag_pause": 20000,
+    "maximum_imu_age": 30000,
+    "maximum_pose_age": 80000,
+    "maximum_pose_prediction": 50000,
+    "maximum_capture_alignment_error": 25000,
+    "maximum_network_clock_mapping_uncertainty": 2000,
+    "maximum_camera_timestamp_uncertainty": 8000,
+    "clock_mapping_refresh": 1000000,
+    "clock_mapping_maximum_age": 5000000,
+    "connection_heartbeat": 250000,
+    "connection_expiry": 1000000
+  },
+  "ports": {
+    "controller_input_udp_pi": 41000,
+    "game_state_udp_windows": 41010,
+    "pose_udp_pi": 41020,
+    "trace_udp_windows": 41030,
+    "control_tcp_pi": 41040,
+    "control_tcp_game": 41041,
+    "control_tcp_tracking": 41042,
+    "debug_control_tcp_windows": 41043
+  },
+  "acceptance": {
+    "baseline_duration_seconds": 600,
+    "repetitions": 3,
+    "maximum_late_or_failed_fraction": 0.01,
+    "maximum_log_loss_for_acceptance": 0,
+    "maximum_wrong_player_associations": 0,
+    "maximum_duplicate_state_commits": 0
+  }
+}

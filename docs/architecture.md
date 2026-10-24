@@ -1,119 +1,115 @@
 # Architecture and deployment
 
-[Documentation home](../README.md) · [Protocol](protocol.md) · [Consistency](physics.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Protocol](protocol.md) · [Consistency](physics.md)
 
-**Agreed design:** the device roles and ten-step controller transaction below. **Proposed:** buffering, serialized state changes, version checks, and commit acknowledgement. **Implemented:** no runtime components exist in the inspected repositories.
+**Confirmed direction:** four wireless battery controllers, available Pi 3 Model B, Windows RTX 5080 laptop, webcam-first 2.5D play. **Proposed:** the detailed reference stack, batching, UDP/Protobuf and state-commit protocol. **Implemented:** documentation and offline debug tooling only.
 
 ## Physical deployment
 
-Devices are boxes; nodes inside them are software components and their repositories. The camera service and game engine may share one PC. The intended PC environment is Linux, subject to resolving the skeleton provider; no selected provider currently establishes a different requirement. If a Windows-only tracker is selected, explicitly revise the deployment decision rather than silently claiming it runs on Linux.
+Device boxes and software nodes are distinct. Webcam video stays on the laptop. A separate access point handles the wireless controllers; Pi and laptop use wired LAN. No exact camera generation, AP or purchased controller parts are implied.
 
 ```mermaid
 flowchart LR
-    subgraph handhelds["Physical devices: 1 to 4 ESP32 handhelds"]
-        controller["Controller firmware<br/>repo: motion-tennis-controller<br/>IMU, LED, vibration motor"]
+    subgraph hands["Four physical battery handhelds"]
+        C["ESP32-S3 reference firmware<br/>motion-tennis-controller<br/>BMI270, LED, haptic driver"]
     end
-    network["Physical network: Wi-Fi access point / LAN"]
-    kinect["Physical device: Xbox One Kinect / Kinect v2"]
-    subgraph pi["Physical device: Raspberry Pi"]
-        physics["Physics service<br/>repo: motion-tennis-physics-engine"]
+    AP["Dedicated 2.4 GHz AP and LAN switch"]
+    CAM["USB webcam<br/>1080p60 capability gate"]
+    subgraph pi["Available Raspberry Pi 3 Model B"]
+        P["Native fusion and physics<br/>motion-tennis-physics-engine"]
     end
-    subgraph pc["Physical device: PC; intended Linux"]
-        tracking["Tracking service<br/>repo: motion-tennis-camera-tracking<br/>skeleton backend OPEN"]
-        game["Game and visualization<br/>repo: motion-tennis-game-engine"]
+    subgraph pc["Windows laptop / user-reported RTX 5080"]
+        T["Capture, RTMO-m GPU, person tracking<br/>motion-tennis-camera-tracking"]
+        G["Native committed-state service<br/>motion-tennis-game-engine"]
+        R["Separate SDL3 renderer and UI<br/>motion-tennis-game-engine"]
+        D["Trace collector, viewer and offline audit<br/>debug-units; live modules planned"]
     end
-    controller <-->|"Wi-Fi"| network
-    network <-->|"LAN; medium OPEN"| physics
-    network <-->|"LAN; medium OPEN"| game
-    network <-->|"LAN; medium OPEN"| tracking
-    kinect -->|"USB 3.0; adapter and power required"| tracking
+    C <-->|"Wi-Fi UDP / control TCP"| AP
+    AP <-->|"100BASE-T"| P
+    AP <-->|"Wired laptop LAN"| G
+    AP <-->|"Compact pose packets"| T
+    CAM -->|"USB; capture stays local"| T
+    G -->|"Committed snapshots and events"| R
+    T -->|"Display observations"| R
+    P -.->|"Buffered telemetry"| D
+    C -.->|"Buffered telemetry"| D
+    G -.->|"Buffered telemetry"| D
+    T -.->|"Buffered telemetry"| D
 ```
 
-Addresses, ports, Raspberry Pi model/OS, PC resources, access-point layout, controller parts and wiring are [open hardware/deployment choices](hardware.md). There is no deployment URL or application endpoint to publish.
+The diagram does not claim a live collector or GPU pipeline exists. Proposed responsibilities and actual tool status are in the [master plan](master-plan.md) and [debug plan](debugging.md).
 
 ## Component communication
 
-The arrows represent application messages, not physical cables. Message names and the extra commit acknowledgement are [proposed contracts](protocol.md). Both directions of the ball query are required.
-
 ```mermaid
 flowchart LR
-    C["Controller<br/>repo: motion-tennis-controller"]
-    T["Tracking<br/>repo: motion-tennis-camera-tracking"]
-    P["Physics<br/>repo: motion-tennis-physics-engine"]
-    G["Game / committed state / visualization<br/>repo: motion-tennis-game-engine"]
-    C -->|"controller_input"| P
-    T -->|"skeleton_frame: continuous asynchronous stream"| P
-    P -->|"ball_state_request: REQUIRED"| G
-    G -->|"ball_state_response: REQUIRED"| P
-    P -->|"state_update: state plus gameplay event"| G
-    G -->|"state_commit_result: proposed acceptance / rejection"| P
-    P -->|"feedback_result"| C
-    T -->|"skeleton_frame: proposed display subscription"| G
+    C["Four controller firmware instances"]
+    T["Continuous webcam tracking"]
+    P["Pi fusion / single physics writer"]
+    G["Windows committed-state service"]
+    R["Game renderer / UI"]
+    D["Debug units"]
+    C -->|"controller_input: one key per IRQ"| P
+    T -->|"skeleton_frame per person / frame_status"| P
+    P -->|"ball_state_request: required entries per transaction"| G
+    G -->|"ball_state_response: required echoed keys plus snapshot"| P
+    P -->|"state_update: atomic ordered batch"| G
+    G -->|"state_commit_result"| P
+    P -->|"feedback_result per transaction"| C
+    G -->|"state_publication"| R
+    T -->|"Pose display subscription"| R
+    C -.->|"Local timing / failures"| D
+    P -.->|"Fusion / queue / batch trace"| D
+    G -.->|"State and render trace"| D
 ```
 
-The display subscription is proposed for smooth player visualization between controller events. It never authorizes the game to calculate hits or advance committed ball physics. The Pi receives an independent stream and owns pose selection for decisions.
+Live envelopes use UDP/Protobuf; setup/administration and local renderer state subscription use framed TCP. Telemetry has separate queues. Both required ball-state arrows remain visible even though up to eight logical queries share a datagram.
 
 ## Complete controller transaction
 
-**Agreed steps:**
-
-1. An IMU interrupt occurs on an ESP32.
-2. The controller records measurement start `t0` and assigns a transaction ID.
-3. It sends movement data to the Raspberry Pi.
-4. Physics resolves the controller/person association and obtains suitable continuously acquired skeleton data.
-5. Physics requests the current ball state from the PC game engine.
-6. The game returns the ball snapshot with its simulation tick/state version.
-7. Physics combines the inputs and calculates hit/miss, outgoing angle/velocity, and the resulting state.
-8. Physics sends the updated state/event to the game and corresponding feedback to the controller.
-9. The controller matches the response, records `tr`, and drives LED/motor at the defined electrical boundary `t1`.
-10. The game applies the result and displays the updated scene.
-
-**Proposed refinement:** step 8 sends the state update first and awaits an acceptance response before sending normal hit/miss feedback. Application of the state can therefore precede controller feedback, while actual screen presentation remains asynchronous. This avoids confirming a hit that was rejected as stale; it adds a second PC exchange to measured latency. The mandatory step 5/6 exchange is not replaced by that acknowledgement.
+The agreed path remains: IMU interrupt; `t0` and transaction assignment; movement sent to Pi; associated pose selection/fusion; explicit game-state query; versioned snapshot response; physics calculation; corresponding controller result and game update; controller electrical feedback; scene presentation. The proposed implementation batches network exchanges while retaining each transaction and adds commit confirmation before positive hit/miss feedback.
 
 ```mermaid
 sequenceDiagram
-    participant I as ESP32 IMU / interrupt
-    participant C as ESP32 controller
-    participant T as PC tracking service
-    participant P as Raspberry Pi physics
-    participant G as PC game / committed state
-    participant D as PC display
-    loop Continuous acquisition independent of transactions
-        T->>P: skeleton_frame with original capture time and frame ID
+    participant C as Four ESP32 controllers
+    participant T as Windows webcam tracking
+    participant P as Pi 3 fusion and physics
+    participant G as Windows game state service
+    participant R as Separate renderer
+    loop Continuous independent capture and inference
+        T-->>P: Per-person skeleton_frame and frame_status
     end
-    I->>C: IMU interrupt / measurement boundary
-    Note over C: t0; assign controller_id, session_id, request_seq
-    C->>P: controller_input with IMU sample IDs
-    P->>P: Queue; resolve person; select buffered skeleton; validate age
-    alt Valid inputs and association
-        P->>G: ball_state_request (required)
-        G-->>P: ball_state_response with state_version and simulation_tick (required)
-        P->>P: Combine inputs and compute candidate result
-        P->>G: state_update with base_state_version and event
-        G->>G: Proposed atomic version check and commit
-        G-->>P: state_commit_result (proposed)
-        alt Commit accepted
-            P-->>C: feedback_result hit or miss with committed version
-            Note over C: tr at receipt of matching valid application result
-            C->>C: LED / motor electrical actuation; record t1
-            G->>D: Schedule updated scene and event
-            Note over D: Display photons occur later, outside controller timing
-        else Conflict or unresolved commit
-            P-->>C: feedback_result state_conflict or timeout
-            C->>C: Explicit error feedback; no normal hit / miss
+    C->>C: IMU interrupt; record t0 and unique transaction
+    C->>P: controller_input at 200 Hz per controller
+    P->>P: Queue; associate; fuse delayed pose with IMU history
+    alt Valid and timely inputs
+        P->>G: ball_state_request with logical query for each selected transaction
+        G-->>P: ball_state_response echoes queries and common version / tick
+        P->>P: Recheck freshness; integrate once; calculate ordered decisions
+        P->>G: state_update with base version, final state and ordered events
+        G->>G: Validate and commit complete batch atomically
+        G-->>P: state_commit_result
+        alt Accepted batch
+            P-->>C: Individual feedback_result with committed event identity
+            C->>C: tr at complete receipt, retained after validation
+            opt Eligible semantic cue before local expiry
+                C->>C: Electrical output at t1
+            end
+            G-->>R: Committed state_publication
+            R->>R: Render scene; photons measured separately
+        else Conflict or uncertain commit
+            P-->>C: Correlated failure or counted local timeout
+            P->>P: Pause and resolve uncertain outcome
         end
-    else Invalid or unavailable tracking
-        P-->>C: Correlated invalid_input / tracking_unavailable / stale_input
-        C->>C: Explicit error feedback
+    else Invalid tracking / stale input / overload
+        P-->>C: Explicit error; never a fabricated miss
     end
 ```
 
-Connection loss may prevent any result reaching the controller. A local deadline then ends its measurement record as a timeout; late or unmatched responses are counted and cannot trigger a stale hit effect. A receipt acknowledgement, if added, is never `feedback_result` completion. See [protocol failure handling](protocol.md#error-and-lifecycle-behavior).
+Each sample has an application outcome, but electrical cues are limited to meaningful contact/completed-swing events. `t1` is not fabricated for samples with no eligible output. The screenshot's simplified parallel branches do not establish ordering guarantees; accepted game state can precede feedback and display presentation is asynchronous.
 
-## State and scheduling boundaries
+## Concurrency, periodic motion and failure boundaries
 
-The proposed model gives the game sole ownership of committed snapshots and physics sole authority to calculate updates. Physics serializes controller jobs and periodic movement jobs into one ordered stream. Every controller decision reads a fresh version via the required query. Game application uses a version precondition; retries cannot apply one event twice.
+One state batch is in flight, at most eight transactions and at most two per controller; normal arrivals are four per 5 ms. The game stores committed state; only physics calculates advances. Periodic-only batches continue ball motion without controller events. Version checks, session/epoch fencing and deduplication prevent conflicting integrators or repeated events. See [physics](physics.md).
 
-Between events, periodic physics jobs integrate ball movement and submit updates through the same commit path. Rendering may interpolate committed snapshots for presentation; it must not write extrapolated state back as authoritative. Network waiting can delay a 5 ms target tick. A periodic scheduler alone is not evidence of meeting that target. [Physics](physics.md) specifies ordering, lag, recovery, and conflicts.
-
-Skeleton capture continues regardless of controller activity. The proposed tracker pushes frames into bounded Pi buffers; transactions select an existing frame or wait up to a declared limit. They do not trigger new Kinect exposures. Source timestamp meaning, alignment, and uncertainty are specified in [coordinates and time](coordinates-and-time.md).
+Bound queues, catch-up and retries. A late packet cannot restart an expired controller cue. Unknown commit outcomes pause new writes until resolved/reset. Tracking runs continuously; input does not trigger a new exposure. Camera age and historical-IMU alignment are verified separately from local application RTT. The reference targets deadline-aware service, not an unconditional hard real-time guarantee through Windows, GPU and Wi-Fi.

@@ -1,54 +1,57 @@
-# Hardware and deployment prerequisites
+# Hardware reference and procurement gates
 
-[Documentation home](../README.md) · [Architecture](architecture.md) · [Development setup](development.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Network](networking.md)
 
-**Implemented:** no firmware, wiring diagram, bill of materials, device configuration, or hardware test is present in the inspected repositories. **Agreed design:** ESP32 handheld controllers, an Xbox One Kinect / Kinect v2, a Raspberry Pi for physics, and a PC for the game engine. **Proposed:** the connection and commissioning guidance below. **Open:** exact parts and operating environments not established by repository evidence.
+**User-confirmed:** Raspberry Pi 3 Model B; Windows laptop with RTX 5080; four wireless battery controllers required; ESP32 model still open; Elgato Facecam or another webcam considered. **Proposed:** the reference parts and connections below. No purchases, electrical design approval, hardware inventory inspection or bench tests were performed.
 
-## Device allocation
+## Reference bill of materials
 
-| Physical device | Software role | Known requirements | Open choices |
-| --- | --- | --- | --- |
-| One to four handheld controllers | Controller firmware | ESP32, Wi-Fi, IMU with an interrupt or documented measurement boundary, LED, vibration motor | ESP32 variant, board, IMU, power source, framework, driver, pins, enclosure |
-| Xbox One Kinect / Kinect v2 | Input to camera-tracking service | Sensor, suitable power/PC adapter and USB connection | Available adapter, USB-host compatibility, mounting, tracking backend |
-| Raspberry Pi | Physics component | Network path to controllers, tracking service, and game engine | Pi model, OS, architecture, cooling, wired versus wireless uplink |
-| PC | Game engine and optionally camera-tracking service | Display and network; Linux is the intended game-engine environment | Rendering framework, Linux distribution, GPU needs, tracking service OS |
-| Local network infrastructure | Connects distributed components | Wi-Fi coverage for all controllers | Access point, channel, addressing, congestion controls, security configuration |
+| Quantity | Device / part | Decision and verification |
+| --- | --- | --- |
+| 1, available | Raspberry Pi 3 Model B | Native C++ fusion/physics only; wired 100BASE-T LAN; appropriate micro-USB supply, microSD, cooling and temperature/throttling monitoring |
+| 1, available by user report | Windows RTX 5080 laptop | Capture, GPU pose inference, separate state service/renderer and debug collection; verify GPU identity/VRAM, driver, power mode and cooling |
+| 4, recommended | ESP32-S3-DevKitC-1-N8R8 | ESP-IDF C/C++; explicit exposed pins and USB debugging; 2.4 GHz Wi-Fi, no assumption of 5 GHz capability |
+| 4, recommended | BMI270 breakout exposing SPI, data-ready interrupt and 3.3 V-compatible I/O | Start accelerometer and gyro at 200 Hz, ±16 g and ±2000 degrees/s; convert wire angular rates to rad/s and flag saturation; verify exact filter/group delay |
+| 4, recommended | DRV2605L driver board and a matched LRA actuator | Driver/actuator voltage and resonance must be configured from chosen parts; normalized requested intensity is not calibrated physical strength |
+| 4, required | External status LED, current limiting, pairing button, rigid grip/enclosure and wrist strap | Distinct hit/miss/fault patterns; camera-visible player label; safe mechanical retention |
+| 4, proposed power assembly | Protected 1S rechargeable Li-ion/LiPo pack, nominal 1,200 mAh; charger with power-path management, switch and regulated supply | Reference capacity only; choose compliant assembled parts and a power design matched to board/motor peaks. Cell must never connect directly to a 3.3 V rail. Runtime is measured, not inferred from capacity alone |
+| 1, recommended | Dedicated configurable access point with wired LAN/switch | Four controller stations on a quiet legal 2.4 GHz 20 MHz channel, Pi/laptop wired; no Pi-hosted AP |
+| 1, to validate | Webcam capable of 1080p60 at actual whole-body playing distance | Prefer fixed mounting and controllable exposure; exact Facecam generation matters; see tracking stack |
+| As needed | Ethernet cables and laptop adapter; rigid camera mount; calibration target | Verify link speed, USB topology and full player visibility |
+| 1 set, measurement | Logic analyzer, safe signal leads/common reference, optional photodiode/vibration sensor/light barrier | Compare GPIO and actual electrical outputs; characterize reference uncertainty |
 
-The handheld controllers are ESP32 devices. The Raspberry Pi is the physics host. Sharing one physical PC for tracking and rendering does not merge their software responsibilities or repositories.
+The Pi 3B has a 1.2 GHz quad-core CPU, 1 GB RAM and 100BASE-T Ethernet; it is not a Pi 3B+ or Pi 5. Its USB/Ethernet architecture and thermal state matter under load. See [official specification](https://www.raspberrypi.com/products/raspberry-pi-3-model-b/) and [board documentation](https://www.raspberrypi.com/documentation/computers/sbcs.html). The laptop GPU carries inference; transferring webcam video to the Pi would spend resources without improving the proposed pipeline.
 
-For a Kinect v2 host, the upstream libfreenect2 driver requires USB 3.0; USB 2 is unsupported. Validate the available host controller and adapter with the actual sensor rather than assuming connector shape proves compatibility. See the [upstream hardware requirements](https://github.com/OpenKinect/libfreenect2#hardware-requirements). This is a dependency requirement, not a Motion Tennis hardware test result.
+The [ESP32-S3 board guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/) and [SoC specification](https://www.espressif.com/en/products/socs/esp32-s3) establish the recommended board family and 2.4 GHz radio. The [BMI270 datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf) and [official SensorAPI](https://github.com/boschsensortec/BMI270_SensorAPI) are the implementation references. The [DRV2605L documentation](https://www.ti.com/product/DRV2605L) covers ERM/LRA drive; select and characterize an actual actuator before setting drive limits.
 
-## Controller wiring information
+## Proposed controller wiring allocation
 
-No pinout is agreed. Do not copy an unrelated ESP32 board's pin numbers into firmware. Before wiring, record a reviewed table containing the selected board revision, signal names, connector orientation, voltage levels, supply/current requirements, driver part, and selected GPIO capabilities.
+This is a proposed pin assignment **only for the named ESP32-S3 DevKitC reference**, not a verified schematic for another ESP32 variant. Check board revision and module pin reservations before wiring. Keep USB GPIO19/20, boot-strapping pins and PSRAM-reserved pins free of these peripherals.
 
-| Functional connection | Required information before implementation |
-| --- | --- |
-| IMU data bus to ESP32 | Selected IMU and bus, voltage compatibility, addressing or chip select, required passives, sample rate and filtering |
-| IMU interrupt to ESP32 | Interrupt meaning, polarity, edge/level mode, usable input pin, and whether buffered samples predate the interrupt |
-| ESP32 output to LED | LED type, driver/current limiting, polarity, output pin, measurable electrical activation point |
-| ESP32 output to vibration driver | Motor type, rated supply/current, driver and protection requirements, control mode, enable pin, default-off behavior |
-| Power and reference | Supply capacity under Wi-Fi and motor load, grounding, decoupling, startup/reset behavior |
-| Measurement test points | IMU interrupt, transaction marker, LED command, motor command, and analyzer reference |
+| Signal | Proposed ESP32-S3 GPIO | Electrical/measurement rule |
+| --- | --- | --- |
+| BMI270 SPI chip select | 10 | 3.3 V-compatible breakout; SPI mode and initialization from sensor datasheet |
+| SPI clock / MOSI / MISO | 12 / 11 / 13 | Start at a conservative 4 MHz; confirm signal quality and supported sensor bus mode |
+| IMU data-ready interrupt | 14 | Timestamp the documented interrupt edge; preserve FIFO/source time separately |
+| Driver I²C SDA / SCL | 8 / 9 | Verify breakout pull-ups and voltage levels; 400 kHz initial bus target |
+| External LED | 4 | Current-limiting component chosen from LED characteristics; do not assume onboard RGB LED pin |
+| Pairing button | 21 | Debounce outside the IMU interrupt; deliberate re-pairing only |
+| Measurement markers | 6 / 7 / 15 | Separate `t0`, complete-result receipt and output-command markers; actual motor drive observed separately |
 
-The motor requires a suitable power/driver circuit; an ESP32 GPIO must not be treated as a motor power supply. The electrical design must be derived from the selected component datasheets. No generic motor circuit or invented pin assignment is a project schematic.
+GPIO is not a motor power supply. The haptic driver and power assembly must handle actuator current and transients. Include local decoupling and a shared signal reference, and check whether vibration/current affects IMU measurements or radio stability. Proposed outputs default off at boot, disconnect, watchdog recovery and invalid driver configuration. A locally enforced 50 ms maximum pulse is independent of network commands.
 
-**Proposed:** default feedback outputs to off during reset, watchdog recovery, disconnect, and firmware startup; cap duty/intensity and pulse duration in a locally enforced profile. Measure whether motor current disturbs the IMU, Wi-Fi, or supply before interpreting latency traces. See [controller behavior](controller.md).
+## Battery and radio commissioning
 
-## Kinect and host decision
+Wireless gameplay must run from battery. USB can serve flashing and a stationary timing reference, but is not the gameplay power/transport assumption. Use a reviewed power-path design that prevents back-feeding when USB and battery are connected. The final regulator, charger, connector polarity, fuse/protection, enclosure and actuator part are procurement gates; do not build a generic wiring diagram from an unrelated development board.
 
-The first feasibility milestone must establish continuous multi-person joint tracking on the actual Kinect v2, with stable identities, capture timestamps, quality flags, and a measured processing delay. A working depth image alone does not satisfy gameplay requirements.
+Disable Wi-Fi modem sleep during active low-latency play in the reference firmware, with Bluetooth disabled. This increases battery consumption; measure average and peak current across idle, four-player radio load, haptics and low-battery operation. Derive run time from usable energy, conversion loss and measured current, then test the pack's cutoff behavior. Do not promise hours of operation from the nominal mAh value.
 
-Microsoft's SDK 2.0 download page lists Windows 8, Windows 8.1, and Windows Embedded Standard 8, along with x64, USB 3.0, and a DirectX 11-capable graphics adapter. Those published requirements describe an alternative dependency route; they do not establish this project's installed OS, newer Windows support, or Linux body tracking. See the [official SDK requirements](https://www.microsoft.com/en-us/download/details.aspx?id=44561).
+## Camera selection and geometry
 
-If a Windows-only tracking solution is selected, record the deployment change explicitly: tracking may need a separate Windows host while the game engine remains on its intended Linux PC. Do not silently assume both services can still share one OS. The [tracking decision](tracking.md#backend-selection) is open.
+A close-up webcam's 1080p60 label does not establish usable focus for four whole bodies several metres away. The tracking-stack page distinguishes Facecam/MK.2 and Facecam 4K mode-dependent focus specifications. Before purchase/final selection, verify sharp wrists/ankles across the entire lane layout, exposure under motion, full-frame field of view, sustainable negotiated frame rate and capture timestamps. Avoid wide-angle distortion or software mirroring that is not represented in calibration.
 
-## Proposed commissioning record
+First deployment is a calibrated 2.5D plane/lane model. True metric 3D needs a separately validated stereo/depth/multi-view solution; Kinect v2 is retained only as a possible later alternative. See [tracking stack and sources](tracking-stack.md) and [coordinate calibration](coordinates-and-time.md).
 
-For each experiment, retain a hardware inventory with controller ID and board revision, sensor model and settings, firmware revision, Pi model/OS, PC CPU/GPU/OS, Kinect adapter/USB host, network topology, and display refresh configuration. Store serial numbers only where needed for reproducibility; do not put network credentials in the repository.
+## Hardware acceptance gates
 
-Commission in stages: power and default-off feedback, local IMU acquisition, timestamp/GPIO comparison, network exchange with synthetic data, Kinect tracking and calibration, then integrated play. Record environmental conditions such as camera placement, player distance and occlusion, Wi-Fi interference, CPU load, and power throttling. These are proposed activities; no successful commissioning is claimed.
-
-## Required decisions
-
-The team must choose a board/IMU/driver/power combination, tracking backend and OS, Pi model and OS, network configuration, and available timing instruments. Record each selection with a reproducible configuration and validation evidence in the relevant repository and [decision log](adr/README.md). Hardware availability can be resolved independently of protocol and documentation work.
+Record exact board/sensor/driver/actuator and webcam revisions, laptop GPU/driver, Pi OS/kernel, supply, AP/channel, cable/USB topology and display mode. Validate safe power/output defaults, IMU saturation/filter delay, camera focus/capture uncertainty, four-player identity, radio tails, Pi throttling and logger overhead. A faster Pi or stronger model is considered only after measurements identify the bottleneck. The remaining component/power choices are explicit build gates, not hidden assumptions.

@@ -1,66 +1,77 @@
-# Physics processing and ball-state consistency
+# Pi 3 sensor fusion, scheduling and ball consistency
 
-[Documentation home](../README.md) · [Architecture](architecture.md) · [Protocol](protocol.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Protocol](protocol.md) · [Profile](../spec/reference-profile.json)
 
-**Agreed design:** physics runs on a Raspberry Pi, combines controller and skeleton measurements, queries PC ball state, calculates hits and outgoing ball motion, and returns controller feedback plus game updates. **Implemented:** no source or runtime exists. **Everything below is a proposed consistency model**, not a claim about current software.
+**User-confirmed hardware:** Raspberry Pi 3 Model B. **Proposed implementation:** C++20/CMake, 64-bit Raspberry Pi OS Lite, bounded native data structures and nonblocking sockets. No runtime implementation or performance test exists. Do not run camera inference or rendering on this Pi.
+
+## Process and thread responsibilities
+
+Use one physics process with separate I/O, simulation and trace-export tasks. Start with a normal scheduler to establish a baseline; evaluate a verified PREEMPT_RT kernel and fixed-priority scheduling only after bounded execution and starvation controls are tested. Reserve one CPU for the simulation task when measurement justifies it; do not blindly pin USB/Ethernet IRQ work onto the same overloaded core. No allocation, synchronous logging, DNS, model inference, file I/O or blocking network read belongs in the simulation tick.
+
+The I/O task timestamps receipt, validates bounded messages and writes controller queues/pose history. The simulation task owns all mutable fusion, swing and candidate-ball state. It polls completion records from I/O and advances a nonblocking batch state machine. Trace export drains a bounded buffer; full buffers increment loss counters, never block physics. Pin and profile real thread priorities/affinities in the run manifest; they are not guarantees from documentation alone.
+
+## Temporal and spatial fusion
+
+Maintain 256 time-ordered IMU samples per controller (1.28 s at 200 Hz) and eight poses per person. This history remains after transaction completion because delayed camera observations need historical alignment. Preserve original timestamps, source clock IDs and association/calibration versions.
+
+1. Calibrate sensor axes, bias, neutral grip and controller-to-racket offset. Integrate gyroscope orientation with a normalized quaternion; use gravity-direction correction only when acceleration magnitude/dynamics permit it. Do not subtract gravity in an unknown frame or infer absolute yaw from six-axis data.
+2. Map a new camera capture into the common experiment timeline. Find bracketing historical IMU samples and interpolate orientation at that capture time. Their alignment error plus propagated uncertainty must fit the 25 ms limit; log both sample IDs. Never pretend the latest IMU sample was captured simultaneously with an old image.
+3. Convert the selected wrist ray into the calibrated player interaction plane. Apply a bounded constant-velocity alpha-beta position update in that plane; start with proposed alpha 0.7 and beta 0.1, then tune against recorded trajectories. Use actual mapped time deltas, not assumed camera cadence. Reject ambiguous identities and invalid geometry.
+4. Replay buffered angular rates from the observation time to the transaction evaluation time. Predict plane position by velocity for at most 50 ms, including uncertainty. Do not double-integrate accelerometer data into long-term racket position. Do not apply magnetic heading correction unless a future sensor/profile explicitly adds it.
+5. Check pose age at most 80 ms, current IMU age at most 30 ms, valid mapping/calibration and position-prediction limit. A candidate initially valid can expire during the ball query: recheck after the response and immediately before submission. Inputs that fail become explicit errors, not misses.
+
+The fused racket center is the plane wrist position plus the calibrated grip-to-racket offset rotated by IMU orientation. The result is a constrained `plane_2_5d` estimate. A wrist ray/plane intersection does not establish true wrist depth. Neutral-pose heading is reset deliberately, with proposed yaw-drift validation at each run and re-pairing; a numerical acceptable yaw/position error must be established in calibration trials before collision acceptance.
+
+## Ball simulation and collision reference
+
+Use world SI units and fixed 5 ms logical integration steps. Initial model: gravity 9.81 m/s², no aerodynamic spin or drag, swept sphere versus calibrated racket disk/plane, court/net geometry from a versioned configuration. Ball radius 0.033 m and racket-disk radius 0.15 m are proposed demonstrator parameters, not measured equipment. Use semi-implicit Euler for gravity, with swept contact evaluation to avoid endpoint-only tunneling. Ground restitution starts at 0.75; racket normal restitution at 0.8; cap outgoing speed at a configured 20 m/s for the first demo. All parameters belong in the run's gameplay configuration and deterministic test fixtures.
+
+A contact latch prevents the same continuing overlap from generating a new hit every 5 ms. Rearm only after separation greater than the ball radius plus a configured clearance (initial 0.02 m). Swing detection and haptic cue rules are in [controller behavior](controller.md). If tracking becomes invalid within an unresolved swing, terminate it as a tracking failure, never emit a normal missed-swing cue.
+
+A simple initial scene uses four calibrated player lanes whose positions/interaction planes are independent of team assignment. Multiplayer serve/scoring and lane layout are configured demo rules, not real tennis rules inferred from the camera. True spatial 3D collision requires the later depth/stereo profile.
 
 ## Ownership and invariants
 
-| Concern | Proposed authority and invariant |
-| --- | --- |
-| Committed ball snapshot | Game engine stores exactly one current snapshot per `game_session_id` |
-| Calculating state changes | One active physics writer, fenced by a game-issued `writer_epoch` |
-| Snapshot identity | `(game_session_id, state_version)`; version increments once for each accepted update |
-| Simulation time | `simulation_tick` counts fixed integration steps within a session; several events may commit at the same tick |
-| State precondition | Game accepts only updates whose `base_state_version` equals its current version |
-| Event identity | `event_id` embeds the generating physics session plus a session-local unique ID, so it cannot collide after a writer restart; `update_id` is unique within its fenced writer session |
-| Rendering | Reads committed snapshots; visual interpolation never changes committed state |
+The Windows game state service stores the single committed snapshot. Physics is the sole writer/calculator and receives a fenced `writer_epoch`. A snapshot is `(game_session_id, state_version)`; `simulation_tick` is separate logical time. Only the game increments committed version. Rendering interpolation cannot change it.
 
-State version is not a timestamp and not interchangeable with simulation tick. A same-tick hit or miss may increment the version without advancing simulation time. A periodic step advances tick and version. Restarting the game changes `game_session_id`, even if counters reset; old snapshots cannot match the new session.
+An accepted batch changes version once even if it contains eight controller decisions. Events are identified by `(game_session_id, writer_epoch, batch_id, event_index)`. Candidate states between decisions in a batch are derived states, not separately committed revisions. Old sessions/epochs cannot write after restart or replacement.
 
-## Serialized execution
+## Four-controller batching and arbitration
 
-1. Validate and enqueue controller input with the full transaction key. Give arrivals a monotonic Pi-local arrival sequence; break any batched ties by controller ID, session ID, and request sequence. Never order independent devices by unmapped raw timestamps.
-2. Maintain one total order shared by controller jobs and periodic movement jobs. Insert periodic jobs on the configured cadence. Do not reorder an older controller job behind newer controller jobs; use bounded queues and reject excess work explicitly.
-3. A controller job resolves the current association and calibration, chooses a skeleton frame, and checks input ages/alignment against declared limits. Preserve all selected IDs and original capture times. A failed check returns an explicit error rather than a miss.
-4. Send `ball_state_request`; match `ball_state_response` to the query ID, game session, and transaction. A response received after query expiry cannot be used. Allow one outstanding state operation at a time.
-5. After the ball response, recheck input age, alignment uncertainty, association/calibration and transaction expiry. From the returned snapshot, integrate any required elapsed steps and evaluate the racket/ball interaction. Use a swept collision test as a candidate to avoid tunneling between samples; geometry, masses, drag, restitution and swing filtering are open algorithm choices.
-6. Recheck those validity conditions immediately before submission; if they no longer hold, return an explicit failure without committing the candidate. Submit `state_update` with the exact base version, target tick, candidate state, selected input provenance, and gameplay event. Wait for `state_commit_result` before starting another state operation. Log freshness at the decision/submission boundaries, not only at admission.
-7. On acceptance, return `feedback_result` with the committed version and event ID. A valid miss is also a terminal decision and commits an event (and any time advancement), so the UI and controller can refer to the same result.
+The offered load is 4 × 200 = 800 transactions/s. Per 5 ms release, admit up to two pending inputs per controller, eight total, from bounded queues of four/controller. Among eligible controller queues, rotate the starting controller slot each release, then order selected entries by recorded Pi arrival sequence with controller/session/request IDs as tie-breakers. Record the final order; never use unsynchronized source timestamps to claim physical arrival order. Reject overflow explicitly and retain all generated keys in accounting.
 
-For two simultaneous controller events, the first admitted job reads version V and commits V+1; the next explicitly queries V+1. This ordering is deterministic from the recorded arrival order, not a fairness guarantee or proof of physical event order. Record cross-controller latency and starvation statistics before accepting the scheduling policy.
+Each input gets its own `QueryEntry`; one required `ball_state_request` carries all selected entries and one `ball_state_response` echoes them with a shared atomic snapshot. Normal load is four entries; eight allows recovery from a short burst. No samples are silently combined into a different measurement boundary.
 
-## Between controller events
+From the returned snapshot, integrate required fixed steps once, then evaluate events in the recorded order at the chosen target tick. The second event sees the first candidate result, and so on. Prepare one final ball state and ordered decisions, then submit `state_update` against the exact base version. All accepted decisions share the resulting committed version and retain event indices. A valid miss is recorded even when no haptic cue is eligible.
 
-Periodic physics jobs use the same query, integration, version-check, and commit path. They keep the ball moving while no player swings. An initial candidate step is 5 ms; the chosen `tick_duration_us` is session metadata, not inferred from the version counter.
+If an earlier entry becomes invalid before submission, return its explicit failure and rebuild subsequent candidate calculations without its effects. Do not remove it from the list while keeping a ball trajectory it changed. If the game rejects the batch version/session, apply none of it and return state-conflict/errors for every affected input; bounded future requests can query anew.
 
-Use one simulation scheduler. At job execution, integrate from the returned `simulation_tick` to the next required target tick; subsequent queued tick jobs already covered by that advancement become accounted-for scheduling skips, not repeated integration. Apply a controller event at the selected current target tick, logging the difference from mapped sensor capture time. No rewind or rollback is included in this initial proposal. Late input outside the agreed age/alignment limit is rejected as `stale_input`; tolerated short pose prediction must be explicitly bounded and logged.
+Stage all ball-dependent contact latches, swing-hit/completion flags and cue decisions alongside the candidate ball state. Install them only after accepted commit; rejection restores the pre-batch gameplay state. Rebuilding a batch starts from that same pre-batch state, not partially mutated latches. Continuous sensor histories and observation filters may advance independently, but each decision uses an immutable estimator snapshot. An uncommitted hit cannot become a confirmed gameplay/estimator fact. Retain staged side-state during commit ambiguity until its outcome is resolved or the session is reset.
 
-If network or CPU work falls behind, bounded catch-up can calculate several fixed steps in one candidate update. The maximum catch-up steps and acceptable simulation lag are open parameters. Beyond them, pause the simulation and show an explicit degraded state; do not take an unbounded leap or pretend that missed deadlines were met. Render interpolation may improve appearance but does not conceal the lag metric or advance authority.
+## Scheduler and periodic motion
 
-One outstanding query/update path over a LAN is unlikely to behave like a purely local periodic loop under all loads. Separate scheduler wakeup lateness, computation duration, network waiting, commit latency and simulation lag in measurements. Whether 200 Hz processing and a 5 ms physics target are feasible is unresolved.
+Only one batch is in flight. The state machine is `Idle -> QueryPending -> Compute -> CommitPending -> Complete`; errors enter `Recovering/Paused`. A release while busy counts as a skipped release, rather than creating another writer. When ready, choose the next bounded batch and at most four catch-up integration steps. Periodic-only batches use the same query/commit path with no controller entries, so the ball continues moving while no one swings.
+
+The capacity gate is batch-service p99 at most 4 ms under the declared workload. That leaves nominal scheduling margin within 5 ms, but does not prove a worst-case bound. Track average/percentiles, skipped releases, effective commit rate and simulation lag. If required catch-up or lag exceeds 20 ms, pause and expose degraded state; resume only after state, queues and clock mappings are revalidated. Do not integrate an unbounded jump to hide missed work.
+
+At `run_start` or resume, record an anchor `(Pi monotonic time, committed simulation_tick)`. Desired tick is that anchored tick plus elapsed **active** Pi time divided by 5 ms; simulation lag is the corresponding tick difference times 5 ms. On pause, stop active-time advancement. After recovery, fetch the committed tick and rebase the anchor so time spent paused is not integrated as catch-up. Log every anchor/rebase; do not hide lag accrued before pausing. This metric uses one Pi clock and logical ticks, not a subtraction between Windows and Pi timestamps.
 
 ## Conflicts and ambiguous commits
 
-| Condition | Proposed behavior |
+| Situation | Required proposed behavior |
 | --- | --- |
-| Base version is stale | Game rejects without mutation, returns current version; physics records `state_conflict` for this input |
-| Input result was computed from an old snapshot | Never overwrite current state or relabel it as based on the new snapshot |
-| Retry after an ordinary version rejection | Initial model ends the input with `state_conflict`; later transactions query anew. Recalculation retries require a separate bounded policy decision |
-| Update accepted, response lost | Pause writer; retransmit exactly the same `update_id` and payload while its epoch and deduplication record remain valid; game returns the original acceptance. A reconnect of the same physics process can resume that epoch only if no replacement writer was admitted |
-| Deduplication retention expired or writer replaced while commit is uncertain | Resynchronize or reset the session; never blindly resubmit the event under a new ID. A new writer must resolve or invalidate old outstanding work before resuming play |
-| Controller deadline expires before commit resolves | Count timeout; suppress late electrical gameplay feedback. If commit later proves accepted, retain it in game history and record delivery failure separately |
-| Duplicate update with changed payload | Reject as protocol violation; it must not become a different commit |
-| Duplicate controller transaction | Replay cached terminal result or attach to pending work; do not recompute and actuate twice |
-| Game restart | Invalidate outstanding queries, versions and writer epoch; pause, establish a new session and calibrated initial state |
-| Physics restart | Acquire a new fenced writer epoch; reject packets from the old writer; reset pending work with explicit controller outcomes where possible |
+| Stale base version | Game rejects the complete update; no partial state or event application |
+| Duplicate update | Return the cached outcome for the same game/epoch/batch and identical bytes; changed payload is invalid |
+| Lost query reply | Same query retry at 2 ms, expiry at 5 ms; expired replies cannot feed a calculation |
+| Lost commit reply | Identical resends at 2/4 ms; after 8 ms pause new writes and use control-plane `commit_status` |
+| Unknown outcome after retention | Recover/reset the game session; a snapshot alone does not prove a specific event happened |
+| Controller already expired at 50 ms | Preserve later discovered game commit in history; controller suppresses late haptics and retains timeout in measurement accounting |
+| Same-process reconnect | Resume its epoch only if the game confirms no replacement writer; invalidate old connection |
+| Physics restart | New epoch; old writes fenced; reconcile or reset unresolved prior work before resuming |
+| Game restart | New game session and initial state; invalidate snapshots, queries and old writers |
 
-The game maintains commit deduplication independently of controller feedback caching. Retention must cover the negotiated operation deadline plus retry/reconnect window. Its numeric size/time limit is open and must be finite. Session reset is the safe recovery when the system cannot know whether an old operation committed. This is at-most-once commit within a retained session, not guaranteed exactly-once delivery across crashes.
+Retain query/commit results for 2 s, capped at 512 batches without evicting still-required records. On pressure, pause/reject rather than silently weaken deduplication. UI reset/serve requests are physics commands or a new game session; UI must not independently advance the authoritative ball.
 
-## Ball initialization, resets, and diagnostics
+## Implementation gates
 
-The game creates an initial snapshot at session start, using agreed court/ball parameters. Those parameters are open. After initialization, start, serve, reset, and pause actions from the UI are commands to the physics writer; the game cannot independently move the ball. A reset either commits through the writer or starts a new game session that invalidates in-flight work.
-
-Trace each decision with transaction identity, association/calibration, selected IMU samples, tracking session/frame, mapped ages and uncertainty, query ID, base version/tick, result version/tick, event/update IDs, queue/processing durations, and commit status. Store outgoing velocity as a vector in the world frame; derive speed and angles with the [protocol convention](protocol.md#units-and-coordinate-semantics), avoiding redundant contradictory values.
-
-Implementation tests should first establish deterministic integration, version-precondition behavior, duplicate handling and restart fencing with synthetic inputs, then run the [integration matrix](testing.md). No physics tests or hardware runs are currently available.
+First prove deterministic fusion/integration with replay and validate maximum-size schema messages. Then benchmark Pi-only compute, wired query/commit with Windows state service, and four-controller radio load. Record thermal/throttling state, CPU/IRQ load, memory, per-stage timing, uncertainty and all losses. Upgrade to a faster Pi only if measured Pi compute/scheduling is the bottleneck; it cannot fix camera depth, wireless contention or a GPU-blocked Windows state service.
