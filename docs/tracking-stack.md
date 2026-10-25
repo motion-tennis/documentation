@@ -76,11 +76,13 @@ A later true-3D profile must select and validate a depth or calibrated multi-vie
 
 ## Implementation and acceptance order
 
-1. Identify the exact camera and prove four-person field coverage, focus and stable capture mode.
-2. Build the timestamp-preserving capture adapter and latest-only handoff; measure exposure/driver uncertainty.
-3. Lock and verify the GPU inference environment and RTMO-m artifact; test GPU placement and four-person throughput under game-render load.
-4. Implement identity association and guided controller pairing; reject crossings/occlusions that cannot be resolved reliably.
-5. Integrate per-person pose packets with Pi history, plane calibration and historical IMU alignment.
-6. Run the complete [test matrix](testing.md), export the [debug traces](debugging.md), and record useful-input rate, failure reasons, frame-age tails and all skipped frames.
+Follow the [shared stages](project-stages.md), [current release state](project-status.md) and [tracking workflow](https://github.com/motion-tennis/motion-tennis-camera-tracking/blob/main/docs/workflow.md). This stack description does not release the full pipeline in one task.
+
+1. **S0:** review pose identity, timestamps, units, quality/calibration and fixture contracts.
+2. **S1:** build a minimal timestamp-preserving adapter against recorded/synthetic inputs and test its latest-only handoff and identity/invalid-input behavior.
+3. **S2:** identify the actual camera and prove four-person field coverage, focus and capture mode; measure exposure/driver uncertainty. Pin the model/GPU environment and verify real four-person throughput, identity continuity and 2.5D calibration under declared probe load.
+4. **S3:** integrate one controller's guided pairing, per-person pose packets, Pi history, plane calibration and historical IMU alignment. Keep ambiguous crossings/occlusions invalid.
+5. **S4:** demonstrate all four confirmed players with the complete game and both team views.
+6. **S5:** run the matched [test matrix](testing.md) under actual renderer/GPU load and export [debug traces](debugging.md), useful-input rate, failure reasons, frame-age tails and all skipped frames. **S6** packages the reproduced setup; **S7** true-3D alternatives require separate scope.
 
 Do not publish working install or launch commands until the corresponding files and supported environment exist in `motion-tennis-camera-tracking`.

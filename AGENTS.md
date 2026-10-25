@@ -12,7 +12,13 @@ These instructions apply to this repository and all its subdirectories. This rep
 - Do not add non-English translations or parallel language versions. If a request arrives in another language, keep repository changes in English.
 - Preserve existing license text and attribution. Do not rewrite third-party names or legal notices as part of language cleanup.
 
-## Project context
+## Start each contribution with the shared stage
+
+Read [repository orientation](docs/orientation.md), the [local workflow](docs/workflow.md), [shared stages](docs/project-stages.md) and the [central status ledger](docs/project-status.md) before selecting implementation scope. The ledger is the sole active-stage authority; component guides do not release stages independently. Record the documentation revision and use the [task brief and handoff](docs/contribution-workflow.md) to define a bounded outcome, allowed paths, dependencies, checks and explicitly deferred work.
+
+Specifications and future backlogs are not authorization to implement the whole system. Do not advance the shared stage automatically after completing a task. A responsible human records gate acceptance; an agent may record an explicitly authorized decision. An explicit human request can authorize a named later-stage slice: document the exception without advancing the global stage. Routine choices and fixes inside an authorized task do not require repeated permission. If the central status is unavailable, obtain a pinned verified status/task baseline before assuming runtime scope; continue independent inspection/planning.
+
+## System context
 
 Motion Tennis is a multiplayer tennis demonstrator for up to four players. Its focus is observable distributed processing, communication latency, synchronization, data freshness, and measurable timing behavior. Sophisticated graphics are secondary. Keep the project description neutral and technical; do not add affiliations or assumed team size.
 

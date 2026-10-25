@@ -1,6 +1,6 @@
 # Motion Tennis master plan
 
-[Documentation home](../README.md) · [Reference profile](../spec/reference-profile.json) · [Implementation gates](roadmap.md)
+[Documentation home](../README.md) · [Reference profile](../spec/reference-profile.json) · [Shared stages](project-stages.md) · [Current stage](project-status.md)
 
 Current profile: `webcam-pi3-wireless-v2`, 2026-10-25. [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md) records the user-selected MPU-6050/Zephyr first prototype, revising the hardware/runtime metadata of the original 2026-10-24 profile. The [independent IMU markers](imu-trigger-markers.md) and [IMU assessment](imu-selection.md) define its integration gates. Other runtime choices and numerical limits below are **Proposed reference design**, unless explicitly user-confirmed. They are concrete implementation defaults to evaluate, not measured capabilities. **Implemented:** documentation, a documentation checker and the small offline trace tool in `debug-units`; no controller, tracker, physics service or game implementation exists yet.
 
@@ -100,14 +100,9 @@ The [marker contract](imu-trigger-markers.md) adds session-scoped trigger IDs an
 
 The debug environment has three independent evidence layers: application event traces, packet captures, and GPIO/optical/mechanical measurements. A trace joins controller/session/request, source sample, pose frame, query, batch, base/committed version and event index. It includes dropped logs and failed/expired inputs. Collection is buffered and outside the control path.
 
-Implement in this order:
+The [shared S0–S7 stages](project-stages.md) define the implementation sequence and gate evidence; the [central ledger](project-status.md) records the active stage. In order: complete the shared contract baseline, build isolated component slices, prove device/transport feasibility, integrate one diagnostic controller, deliver playable four-person doubles, perform matched measurement/hardening, then freeze a reproducible demonstrator. True 3D and alternative hardware/radio work remain separately scoped extensions.
 
-1. Lock this profile and schema revision; establish a run manifest and synthetic trace checks in all six repositories.
-2. On the actual Windows laptop, prove four-person webcam inference, whole-body focus/FOV, timestamp uncertainty and 2.5D calibration. On the Pi 3, prove scheduler and wired state-query/commit capacity with a simulator.
-3. Build one MPU-6050/I²C controller with a pinned Zephyr toolchain and driver, then measure regular sample, threshold-IRQ and output boundaries plus wireless RTT against simulated game/pose services. Verify explicit DLPF/divider readback and 200 Hz cadence, motion-handler integration, shared-INT attribution, unchanged stream behavior and deterministic marker correlation before evaluating trigger latency.
-4. Establish Pi-reference offset/drift mappings and independently validate their uncertainty; expose the same mapping versions and uncertainty in the debug timeline. Integrate one controller with real tracking and ball-state service, including hits, misses, expired mappings and all failure paths.
-5. Integrate all four confirmed players as 2v2 doubles with the extended match contract. Exercise automatic movement, serves, normal score/side changes, two team views and their trace evidence alongside batch ordering, load, interference, drops, duplicates, stale frames, power changes and restarts.
-6. Only after passing recorded gates, freeze reproducible build/run commands and choose whether to upgrade the Pi, model, camera or radio based on the bottleneck evidence.
+Use each repository's orientation and workflow to choose one bounded slice. Keep parallel camera, controller and Pi/state feasibility work within the released stage. Trace emission begins with the isolated components, collection supports feasibility probes, and the first integrated path already requires a viewer with visible clock uncertainty and explicit marker links. Do not postpone evidence until final evaluation or read this complete-system plan as authorization for all implementation stages.
 
 For each of one through four controllers, perform three 10-minute baseline runs after declared warmup. At 200 Hz, a four-controller run offers 480,000 transactions. Proposed pass criteria include p99 targets, at most 1% late-or-failed attempts, zero wrong-player associations, zero duplicate commits and no unexplained log loss. Publish all denominators, failures and censored timeouts. Fault runs test bounded recovery, not necessarily the same performance targets. See [testing](testing.md), [debugging](debugging.md) and [roadmap](roadmap.md).
 

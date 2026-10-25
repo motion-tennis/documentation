@@ -6,27 +6,15 @@ The reference is concrete enough to divide work without inventing running softwa
 
 ## Delivery order
 
-| Gate | Owning repositories | Required deliverable | Exit criterion |
-| --- | --- | --- | --- |
-| M0: shared baseline | documentation + all components | Profile/schema hashes, trace contract, status labels, fixtures | Documentation checks; contract review; maximum encoded-size validation |
-| M1a: camera feasibility | camera tracking + debug | Real Windows capture/model manifest; four-person tracker; calibration dataset | Valid whole-body focus/FOV, GPU provider, sustained pose rate and bounded timestamp uncertainty |
-| M1b: Pi/state feasibility | physics + game + debug | Headless synthetic batch producer/state service; baseline scheduler | Ordered atomic commits; nominal800 txn/s capacity gate under Pi3 load |
-| M1c: handheld feasibility | controller + physics + debug | One MPU-6050/I²C battery controller with pinned Zephyr, motion-driver extension, regular-sample and independent threshold markers; one-controller WLAN A/B setup pilot | Safe power/output behavior, DLPF/divider readback and measured 200 Hz cadence, shared-INT attribution, local RTT/electrical traces, IRQ delay and marker links; both topology/control/debug reachability checks |
-| M1d: shared time reference | physics + controller + game + tracking + debug | Pi-reference four-timestamp exchange, offset/drift estimator, immutable mapping versions and uncertainty evidence | Known-offset/drift fixtures; asymmetric/load trials; measured error covered by declared bounds; 1 s refresh/5 s expiry and restart handling; runtime and traces use the same map |
-| M1e: doubles contract and rules | documentation + physics + game + controller + tracking + debug | Versioned roster/avatar/serve/score schema and fixtures; stable team assignment, local-gesture mapping and deterministic automatic movement | Complete-state atomicity and payload bounds; serve/let/fault/scoring fixtures; slot uniqueness; one shared state for both team views |
-| M2: one-controller integration | all six | Real local-gesture pose fusion plus required state query/commit and feedback against controlled match fixtures | Known hits/misses and all fault paths; no identity ambiguity or silent failures; this is a diagnostic setup, not a full doubles match |
-| M3: debug environment | debug + instrumented components | Live collector, packet decoder, timeline viewer, run bundles, simulator/replay/fault harness, threshold-marker overlay and visible clock uncertainty | Source manifest reconciliation, complete marker-to-transaction path or explicit missing evidence, numeric uncertainty bands/status, separate event metrics, bounded log overhead and fault reproduction |
-| M4: four-player evaluation | all six | Three 10-minute baseline runs at each count per WLAN variant A/B, plus matched load/fault trials | Published distributions, ≤1% reference late/failure target, zero correctness/evidence violations; recorded topology comparison and deployment decision |
-| M5: reproducible demonstrator | all six | Pinned dependency/build/run manifests, integration startup and diagnostic UI | Another contributor reproduces the documented results |
-| M6: true 3D extension | tracking + physics + game | New depth/stereo/multi-view profile and calibration | Verified metric 3D accuracy/identity/time; no guessed z in a 2D schema |
+The [shared S0–S7 stages](project-stages.md) are the single development sequence. Read [current project status](project-status.md) before selecting work and use the [task/handoff workflow](contribution-workflow.md). Every repository has a local orientation and stage workflow. The former M0–M6 work packages are mapped to the new sequence in the [migration table](project-stages.md#migration-from-earlier-roadmap-labels); they are not a second schedule.
 
-M1a, M1b and M1c can proceed independently after M0. M1d can start with synthetic clocks in parallel, then needs the actual timestamp boundaries from those gates before M2. Do not invest in a polished renderer before the camera and Pi 3/state-service gates. Do not claim M3 completed because the offline trace checker exists.
+S0 establishes contracts, S1 builds isolated slices, S2 proves hardware and transports, S3 integrates one diagnostic controller, S4 delivers playable doubles, S5 measures and hardens the whole system, and S6 makes it reproducible. S7 holds separately authorized extensions. Local completion does not automatically advance the global stage.
 
-The agreed [doubles design](gameplay.md) requires M1e before full-match integration. M4 includes four assigned humans, automatic avatar movement and both team views; its one-to-three-controller workload runs remain diagnostic tests. The current ball-only schema/profile is not a completed doubles contract.
-
-Wi-Fi remains selected for near-term work. Use the [external-AP/Pi-hotspot comparison](networking.md#external-ap-versus-pi-hotspot-comparison): A is the initial baseline, B is a feasibility/evaluation candidate, and the laptop stays wired in both. Compare identical 200 Hz streams, protocol, marker behavior and workload. ESP-NOW is deferred outside this work package.
+Wi-Fi remains selected for near-term work. Use the [external-AP/Pi-hotspot comparison](networking.md#external-ap-versus-pi-hotspot-comparison): A is the initial baseline, B is a feasibility/evaluation candidate, and the laptop stays wired in both. S2 contains the reachability pilot; S5 contains the matched comparison with identical 200 Hz streams, protocol, marker behavior and workload. ESP-NOW is deferred outside this work package.
 
 ## Concrete component backlog
+
+These are eventual capabilities across multiple stages, not a task to implement in one pass. Select only the slice allowed by the central stage and the repository workflow.
 
 - **Controller:** board/power design; [selected MPU-6050/I²C prototype](imu-selection.md) with pinned Zephyr/HAL/driver; explicit DLPF/divider initialization and readback; motion-trigger extension and shared-INT source attribution; regular-sample ISR/clock/session IDs; early threshold capture and explicit trace links; bounded UDP/control codec, pending table, association installation ACK, semantic cue scheduler, trace exporter and physical test points. Preserve the continuous gameplay stream.
 - **Tracking:** Media Foundation adapter and rectification, latest-frame handoff, pinned RTMO-m/ORT GPU manifest, identity association, per-person publication, clock/uncertainty characterization and pairing diagnostics.

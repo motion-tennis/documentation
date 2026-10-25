@@ -8,6 +8,8 @@
 
 **Agreed design:** the evaluation emphasizes distributed communication, synchronization, data freshness and measurable timing under one through four active controllers. Tracking failures and communication failures must not silently count as misses. Every measurement transaction must have a correlatable terminal outcome, including local timeouts when the network cannot deliver a result.
 
+Select acceptance cases for the named task and [released project stage](project-status.md). The [shared stage gates](project-stages.md) place contract checks in S0, isolated slices in S1, device/transport feasibility in S2, one-controller integration in S3, full doubles functionality in S4, matched system evaluation in S5 and independent reproduction in S6. This complete matrix is not an instruction to implement or test all future capabilities at once. Record results through the [task/handoff workflow](contribution-workflow.md).
+
 ## Documentation checks available now
 
 Run from `documentation`:

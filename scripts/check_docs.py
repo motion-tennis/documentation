@@ -11,6 +11,8 @@ from collections import Counter, defaultdict, deque
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from render_progress import stale_outputs
+
 
 REPOSITORIES = (
     "documentation",
@@ -411,6 +413,12 @@ class Checker:
                 self.check_link(path, line, target)
         self.required_content()
         self.reference_profile()
+        try:
+            for path in stale_outputs(self.documentation):
+                self.error(path, 1, "Stale project progress view; run python3 scripts/render_progress.py")
+            self.counts["project progress views"] += 2
+        except (OSError, UnicodeError, ValueError) as exc:
+            self.error(self.documentation / "docs/project-status.md", 1, "Invalid project progress source: " + str(exc))
         print("Checked {} Markdown files in {} available repositories.".format(len(collected), len(self.repo_paths)))
         for key, value in sorted(self.counts.items()):
             print("  {}: {}".format(key, value))

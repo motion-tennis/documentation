@@ -1,6 +1,10 @@
 # Development setup and integrated startup
 
-[Documentation home](../README.md) · [Master plan](master-plan.md) · [Architecture](architecture.md) · [Testing](testing.md)
+[Documentation home](../README.md) · [Master plan](master-plan.md) · [Contribution workflow](contribution-workflow.md) · [Current stage](project-status.md) · [Testing](testing.md)
+
+## Choose a bounded contribution first
+
+Read the target repository's `AGENTS.md`, `docs/orientation.md` and `docs/workflow.md`, then the [shared stage definitions](project-stages.md) and [current stage](project-status.md). Use the [task brief and handoff template](contribution-workflow.md) to limit work to one reviewable slice. These setup notes and the startup checklist describe the eventual integrated environment; they do not release future implementation stages.
 
 ## Current state and reference profile
 
@@ -65,9 +69,9 @@ The following combines the **agreed MPU-6050/Zephyr prototype**, other proposed 
 
 Read [hardware](hardware.md), [tracking stack](tracking-stack.md) and [networking](networking.md) before selecting installations or wiring. Schema artifacts do not imply generated serializers or compatible handlers already exist. Do not run guessed firmware, Python model, game or service commands merely because a framework appears in the plan.
 
-## Proposed implementation and startup order
+## Proposed integrated startup procedure
 
-This checklist becomes executable only after the named components have working implementations.
+This checklist becomes executable only after the named components have working implementations. It is a run-time startup procedure and prerequisite check, not a competing development schedule. Implementation follows the [shared stages](project-stages.md); full-match schema work belongs in S0, isolated feasibility in S2, the one-controller diagnostic in S3, full doubles in S4 and matched acceptance trials in S5.
 
 1. **Freeze the run profile.** Record the revisions of all six repositories, schema/profile hashes, actual devices, OS/kernel/driver/model versions, camera mode, AP/channel, input rate and instrumentation. Record `network_variant` (`external_ap` or `pi_hotspot`) and fixed bridge/routing/endpoints; verify all gameplay/control/debug paths before measurement. Change topology between runs and repeat session registration. Check power, battery, motor limits and camera placement.
 2. **Prove the two feasibility gates independently.** On the laptop, verify four-person capture/inference and 2.5D calibration with recorded timestamps. On the Pi, run synthetic 800-transaction/s input against a mock or real independent Windows state service; verify the 5 ms release/4 ms p99 service target and bounded overload before connecting gameplay.
@@ -78,7 +82,7 @@ This checklist becomes executable only after the named components have working i
 7. **Start and pair one wireless controller for integration.** Establish a fresh controller boot/session and follow [player assignment](player-assignment.md): choose a team/slot, identify the physical person through guided motion, confirm hand/station calibration, then complete install ACK and resume. A single-controller setup is a diagnostic fixture, not a normal doubles match. Every regular 200 Hz sampling boundary retains its own transaction ID, even when the Pi batches requests. Enable the independent threshold marker with a versioned configuration and asynchronous explicit links; verify unchanged stream behavior, error patterns and safe output limits.
 8. **Validate clocks and freshness.** As each component starts, let the Pi clock coordinator establish offset/drift mappings to its monotonic reference epoch using four-timestamp control exchanges. Retain raw exchanges, source sessions and immutable mapping IDs; export the same runtime versions to the debug viewer with numeric uncertainty, drift, age and validity. Verify 1 s refresh, 5 s expiry, restart handling and independently measured bounds before accepting cross-device time. Confirm one ESP32 clock for `t0`, `tr`, `t1` and `t_trigger`; those local intervals remain map-independent. Unknown/expired mappings invalidate freshness-dependent gameplay, while continuous sampling and outcome accounting remain intact. Follow the [clock contract](coordinates-and-time.md#pi-reference-clock-mapping).
 9. **Trace a full batch.** Verify controller input, historical IMU/pose selection, per-transaction query entries, required snapshot response, ordered decisions, one atomic update, commit acceptance, matching feedback and eligible electrical cue. Confirm a receipt ACK alone cannot finish the transaction.
-10. **Scale integration and enable full doubles.** Complete the versioned match-state extension and four confirmed A1/A2/B1/B2 bindings before a normal match. Verify automatic avatar movement, assigned-server lift/toss/overhead stroke, scoring and both team views using one committed state. Run three 10-minute baseline trials at each controller count and the fault matrix, with one-to-three-controller cases labeled integration fixtures. Export buffered evidence outside the measured path.
+10. **Enable the implemented full doubles mode when its stage is released.** Verify the S0 versioned match-state contract is implemented consistently and all four A1/A2/B1/B2 bindings are confirmed before a normal match. Check automatic avatar movement, assigned-server lift/toss/overhead stroke, scoring and both team views using one committed state in S4. Run the three 10-minute baseline trials at each controller count and the matched topology/fault matrix in S5, with one-to-three-controller cases labeled integration fixtures. Export buffered evidence outside the measured path.
 
 ## Proposed minimal smoke test
 

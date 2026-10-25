@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="592" viewBox="0 0 1120 592" role="img" aria-labelledby="title description">
+<title id="title">Motion Tennis project progress</title>
+<desc id="description">Selected stage S0: Shared baseline. 0 of 7 core gates accepted. 1 of 6 active gate checklist items complete. S7 is separate scope.</desc>
+<rect width="1120" height="592" rx="24" fill="#0b1c25"/>
+<g fill="none" stroke="#25434a" stroke-width="1.5" opacity="0.55">
+<path d="M855 0V132M1080 0V132M855 66H1080M967 0V132M855 22H1080M855 110H1080"/>
+</g>
+<g font-family="DejaVu Sans, Arial, sans-serif">
+<text x="32" y="40" font-size="16" fill="#97adb7" font-weight="600">MOTION TENNIS  /  PROJECT PROGRESS</text>
+<text x="32" y="91" font-size="30" fill="#f2f7f8" font-weight="700">S0  Shared baseline</text>
+<text x="32" y="123" font-size="16" fill="#97adb7" font-weight="400">Evidence reviewed 2026-10-25</text>
+<rect x="876" y="82" width="212" height="36" rx="18" fill="#152832"/>
+<text x="895" y="106" font-size="16" fill="#a7f36b" font-weight="700">ACTIVE</text>
+<rect x="32" y="152" width="336" height="94" rx="12" fill="#122a33"/>
+<text x="52" y="179" font-size="13" fill="#97adb7" font-weight="600">CORE GATES ACCEPTED</text>
+<text x="52" y="222" font-size="30" fill="#f2f7f8" font-weight="700">0 / 7</text>
+<text x="157" y="218" font-size="15" fill="#b6c9d0" font-weight="400">S0 through S6</text>
+<rect x="392" y="152" width="336" height="94" rx="12" fill="#122a33"/>
+<text x="412" y="179" font-size="13" fill="#97adb7" font-weight="600">ACTIVE GATE CHECKLIST</text>
+<text x="412" y="222" font-size="30" fill="#f2f7f8" font-weight="700">1 / 6</text>
+<text x="517" y="218" font-size="15" fill="#b6c9d0" font-weight="400">S0 review items</text>
+<rect x="752" y="152" width="336" height="94" rx="12" fill="#122a33"/>
+<text x="772" y="179" font-size="13" fill="#97adb7" font-weight="600">EXTENSION TRACK</text>
+<text x="772" y="222" font-size="30" fill="#f2f7f8" font-weight="700">S7</text>
+<text x="877" y="218" font-size="15" fill="#b6c9d0" font-weight="400">SEPARATE SCOPE</text>
+<rect x="32" y="272" width="246" height="110" rx="12" fill="#183b32" stroke="#a7f36b" stroke-width="2"/>
+<text x="48" y="297" font-size="16" fill="#a7f36b" font-weight="700">S0</text>
+<text x="86" y="297" font-size="11" fill="#a7f36b" font-weight="600">ACTIVE</text>
+<text x="48" y="326" font-size="17" fill="#e7f0f2" font-weight="500">Shared baseline</text>
+<rect x="302" y="272" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1"/>
+<text x="318" y="297" font-size="16" fill="#a8b9c6" font-weight="700">S1</text>
+<text x="356" y="297" font-size="11" fill="#a8b9c6" font-weight="600">NOT RELEASED</text>
+<text x="318" y="326" font-size="17" fill="#e7f0f2" font-weight="500">Isolated component</text>
+<text x="318" y="347" font-size="17" fill="#e7f0f2" font-weight="500">slices</text>
+<rect x="572" y="272" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1"/>
+<text x="588" y="297" font-size="16" fill="#a8b9c6" font-weight="700">S2</text>
+<text x="626" y="297" font-size="11" fill="#a8b9c6" font-weight="600">NOT RELEASED</text>
+<text x="588" y="326" font-size="17" fill="#e7f0f2" font-weight="500">Device and transport</text>
+<text x="588" y="347" font-size="17" fill="#e7f0f2" font-weight="500">feasibility</text>
+<rect x="842" y="272" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1"/>
+<text x="858" y="297" font-size="16" fill="#a8b9c6" font-weight="700">S3</text>
+<text x="896" y="297" font-size="11" fill="#a8b9c6" font-weight="600">NOT RELEASED</text>
+<text x="858" y="326" font-size="17" fill="#e7f0f2" font-weight="500">One-controller</text>
+<text x="858" y="347" font-size="17" fill="#e7f0f2" font-weight="500">integration</text>
+<rect x="32" y="398" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1"/>
+<text x="48" y="423" font-size="16" fill="#a8b9c6" font-weight="700">S4</text>
+<text x="86" y="423" font-size="11" fill="#a8b9c6" font-weight="600">NOT RELEASED</text>
+<text x="48" y="452" font-size="17" fill="#e7f0f2" font-weight="500">Playable four-player</text>
+<text x="48" y="473" font-size="17" fill="#e7f0f2" font-weight="500">doubles</text>
+<rect x="302" y="398" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1"/>
+<text x="318" y="423" font-size="16" fill="#a8b9c6" font-weight="700">S5</text>
+<text x="356" y="423" font-size="11" fill="#a8b9c6" font-weight="600">NOT RELEASED</text>
+<text x="318" y="452" font-size="17" fill="#e7f0f2" font-weight="500">Measurement and</text>
+<text x="318" y="473" font-size="17" fill="#e7f0f2" font-weight="500">hardening</text>
+<rect x="572" y="398" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1"/>
+<text x="588" y="423" font-size="16" fill="#a8b9c6" font-weight="700">S6</text>
+<text x="626" y="423" font-size="11" fill="#a8b9c6" font-weight="600">NOT RELEASED</text>
+<text x="588" y="452" font-size="17" fill="#e7f0f2" font-weight="500">Reproducible</text>
+<text x="588" y="473" font-size="17" fill="#e7f0f2" font-weight="500">demonstrator</text>
+<rect x="842" y="398" width="246" height="110" rx="12" fill="#152832" stroke="#31464f" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="858" y="423" font-size="16" fill="#a8b9c6" font-weight="700">S7</text>
+<text x="896" y="423" font-size="11" fill="#a8b9c6" font-weight="600">SEPARATE SCOPE</text>
+<text x="858" y="452" font-size="17" fill="#e7f0f2" font-weight="500">Deferred extensions</text>
+<text x="32" y="550" font-size="15" fill="#97adb7" font-weight="400">Reviewed gates and checklist items are separate counts, not an overall completion percentage.</text>
+<text x="32" y="574" font-size="13" fill="#97adb7" font-weight="400">SOURCE  docs/project-status.md   ·   Stage transitions require a recorded project decision.</text>
+</g>
+</svg>
