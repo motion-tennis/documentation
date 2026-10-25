@@ -6,12 +6,16 @@
 
 ## Physical deployment
 
-Device boxes and software nodes are distinct. Webcam video stays on the laptop. A separate access point handles the wireless controllers; Pi and laptop use wired LAN. No exact camera generation, AP or purchased controller parts are implied.
+Device boxes and software nodes are distinct. Webcam video stays on the laptop. The diagram shows **variant A, the initial baseline**: a separate access point handles the wireless controllers; Pi and laptop use wired LAN. The planned [variant B comparison](networking.md#external-ap-versus-pi-hotspot-comparison) moves the access-point role to the Pi's onboard WLAN while keeping its laptop link wired. Component roles and all application messages remain identical. No exact camera generation, AP or purchased controller parts are implied.
+
+The Pi also owns the shared monotonic time reference and versioned offset/drift mappings for the ESP32 and laptop clock domains. Raw local clocks continue unchanged. Runtime freshness checks and the debug timeline use the same mapping versions; the viewer exposes their uncertainty and validity. Clock exchanges use the existing control path, and mapping export is asynchronous. See the agreed [clock design](coordinates-and-time.md#pi-reference-clock-mapping); implementation and accuracy remain unverified.
+
+The agreed [2v2 doubles mode](gameplay.md) adds automatic avatar movement, overhead gesture serving, normal scoring and two elevated views behind the respective teams. Physical camera stations identify people and calibrate body-relative gestures; they are not avatar court positions. The Pi calculates the full match, the laptop stores one committed state, and both cameras display it. The [roster/serve/score/avatar contract extension](protocol.md#doubles-match-contract-extension) must precede implementation because current schema fields cover only the earlier ball-state proposal.
 
 ```mermaid
 flowchart LR
     subgraph hands["Four physical battery handhelds"]
-        C["ESP32-S3 reference firmware<br/>motion-tennis-controller<br/>BMI270, LED, haptic driver"]
+        C["ESP32, S3 board proposed; Zephyr<br/>motion-tennis-controller<br/>MPU-6050 I2C, LED, haptic driver"]
     end
     AP["Dedicated 2.4 GHz AP and LAN switch"]
     CAM["USB webcam<br/>1080p60 capability gate"]
@@ -49,7 +53,7 @@ flowchart LR
     G["Windows committed-state service"]
     R["Game renderer / UI"]
     D["Debug units"]
-    C -->|"controller_input: one key per IRQ"| P
+    C -->|"controller_input: one key per regular sample"| P
     T -->|"skeleton_frame per person / frame_status"| P
     P -->|"ball_state_request: required entries per transaction"| G
     G -->|"ball_state_response: required echoed keys plus snapshot"| P
@@ -67,7 +71,9 @@ Live envelopes use UDP/Protobuf; setup/administration and local renderer state s
 
 ## Complete controller transaction
 
-The agreed path remains: IMU interrupt; `t0` and transaction assignment; movement sent to Pi; associated pose selection/fusion; explicit game-state query; versioned snapshot response; physics calculation; corresponding controller result and game update; controller electrical feedback; scene presentation. The proposed implementation batches network exchanges while retaining each transaction and adds commit confirmation before positive hit/miss feedback.
+The agreed path remains: regular IMU sampling boundary; `t0` and transaction assignment; movement sent to Pi; associated pose selection/fusion; explicit game-state query; versioned snapshot response; physics calculation; corresponding controller result and game update; controller electrical feedback; scene presentation. The proposed implementation batches network exchanges while retaining each transaction and adds commit confirmation before positive hit/miss feedback.
+
+The additional [threshold IRQ marker](imu-trigger-markers.md) uses `t_trigger` and asynchronous diagnostic links to this existing path. It leaves all gameplay arrows, payloads, the continuous 200 Hz cadence, order and priorities unchanged. The debug viewer follows the marker through transaction/sample, selected pose, logical query, batch decision, commit and feedback identities; it can also show the separate rendering branch. No marker delivery is required before physics proceeds.
 
 ```mermaid
 sequenceDiagram
@@ -79,7 +85,7 @@ sequenceDiagram
     loop Continuous independent capture and inference
         T-->>P: Per-person skeleton_frame and frame_status
     end
-    C->>C: IMU interrupt; record t0 and unique transaction
+    C->>C: Regular sample boundary; record t0 and unique transaction
     C->>P: controller_input at 200 Hz per controller
     P->>P: Queue; associate; fuse delayed pose with IMU history
     alt Valid and timely inputs

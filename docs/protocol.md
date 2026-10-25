@@ -4,6 +4,8 @@
 
 **Proposed reference design, not implemented runtime behavior.** `0.2-proposed` supersedes the earlier proposed TCP/JSON live protocol. The [Protocol Buffers schema](../spec/motion.proto) defines field numbers and types; this page defines required presence, bounds and behavior that proto3 alone does not enforce. All six repositories must agree on the schema/profile SHA-256 before integration.
 
+**Agreed clock design:** [ADR 0009](adr/0009-pi-reference-clock-mapping.md) selects Pi-reference affine clock mappings with drift correction and visible uncertainty. The existing `ClockExchange` supports the planned exchanges; no schema, port or numeric profile setting changes. Runtime estimation, readiness integration and mapping-aware debug validation remain unimplemented.
+
 ## Transport and connection setup
 
 Use one serialized `motion.v02.Envelope` per UDP datagram for live data, at most **1,200 bytes including the envelope**. Reject oversized packets before processing. Do not split one atomic commit into independently applied fragments. A skeleton packet contains one person, not all four people; a separate frame-status packet lists visible IDs. An encoder that cannot fit eight decisions in one update must fail the schema acceptance test or lower the configured batch capacity and re-evaluate capacity; it must not truncate fields or silently split commits.
@@ -21,7 +23,7 @@ TCP control messages use the same envelope with a four-byte big-endian byte leng
 | Tracking control | Windows | TCP 41042 | Capture/model configuration, calibration, pairing diagnostics |
 | Debug control | Windows | TCP 41043 | Run start/stop, manifest, future viewer control |
 
-These are reserved reference ports, not currently running services. Addresses are run-manifest values, not invented deployment hosts. Use a dedicated WPA2/WPA3-capable AP with a controller-compatible mode and isolated LAN. Bind sender role, ID, session and UDP source endpoint during setup; reject unknown senders. This is not cryptographic message authentication. Public/untrusted network use requires a separately reviewed authenticated/encrypted profile; keep credentials outside Git.
+These are reserved reference ports, not currently running services. Addresses are run-manifest values, not invented deployment hosts. Use the selected WLAN variant's AP with a controller-compatible authenticated mode and isolated test network: external AP baseline A or planned Pi hotspot B. The [topology comparison](networking.md#external-ap-versus-pi-hotspot-comparison) changes deployment addresses/interfaces only; message fields, ports and transaction semantics stay identical. Bind sender role, ID, session and UDP source endpoint during setup; repeat registration after topology changes and reject unknown senders. This is not cryptographic message authentication. Public/untrusted network use requires a separately reviewed authenticated/encrypted profile; keep credentials outside Git.
 
 ## Envelope, versioning and scalar validation
 
@@ -41,7 +43,7 @@ World is right-handed, origin court center, +X court-right from near baseline, +
 
 | Message | Required semantics |
 | --- | --- |
-| `controller_input` | One transaction per IMU interrupt: `(controller_id, session_id, request_seq)`, `t0_us`, current `sample_id`, capture metadata/raw sensor ticks, association/calibration, specific force, angular rate, saturation, battery voltage. Envelope session must match transaction session. No silent sample decimation. |
+| `controller_input` | One transaction per regular IMU sampling boundary: `(controller_id, session_id, request_seq)`, `t0_us`, current `sample_id`, capture metadata/raw sensor ticks, association/calibration, specific force, angular rate, saturation, battery voltage. Envelope session must match transaction session. No silent sample decimation. |
 | `skeleton_frame` | One person per datagram: common capture `frame_id`, tracker-session-scoped `person_id`, original capture/time kind/uncertainty, processing completion and clock, image dimensions, calibration and 17 joints. Capture may be unknown; bounded-freshness gameplay must then remain unavailable. |
 | `frame_status` | Same tracker session/frame ID, observed person IDs, readiness and cumulative skipped-frame count; empty IDs explicitly means no person. Missing status/pose packets also expire through freshness limits. |
 | `ball_state_request` | `game_session_id`, writer epoch, batch ID, ordered query entries containing a unique query ID and the full controller transaction key. Every valid selected input has its own logical query. Empty entries mean periodic-only work. |
@@ -54,6 +56,10 @@ World is right-handed, origin court center, +X court-right from near baseline, +
 Outcome enum names in the schema are uppercase; human trace names use their lowercase spelling: `hit`, `miss`, `invalid_input`, `tracking_unavailable`, `stale_input`, `state_conflict`, `timeout`, `overloaded`, `internal_error`. A valid no-collision sample is a miss even if it is not eligible for a physical miss cue. A sensor/communication failure is never a miss.
 
 The durable gameplay event key is `(game_session_id, writer_epoch, batch_id, event_index)`. The update key is `(game_session_id, writer_epoch, batch_id)`. A physics restart receives a new epoch; these keys cannot collide just because a sequence resets. `swing_id` and `cue_id` are scoped to the physics writer epoch and controller association. Input/feedback deduplication always uses the controller transaction key, not event proximity in time.
+
+## Diagnostic threshold markers
+
+The [independent threshold marker](imu-trigger-markers.md) adds only diagnostic trace records. `motion.proto`, gameplay payloads, per-sample transaction semantics, rates and expiry stay unchanged. An asynchronous marker-to-transaction link lets the debug tools join the existing query, batch, commit and feedback identities. The marker is not carried in a new gameplay message, is not a new transaction, and cannot alter admission or priority. Packet capture needs the separate trace evidence to identify marked samples.
 
 ## Batched query and atomic commit example
 
@@ -94,7 +100,49 @@ During that barrier, the controller retires all pending records and cancels queu
 
 Allowed `ControlCommand.operation` values are `configure`, `ready`, `pause`, `resume`, `reset_session`, `commit_status`, `subscribe_state`, `run_start`, `run_stop`. Every command has a unique command ID and matching result. Configuration is a versioned UTF-8 JSON object containing profile hash, endpoint map, calibration transform/rules and limit overrides; validate against the published profile and calibration requirements before accepting. `commit_status` identifies game/epoch/batch and returns its cached `state_commit_result`, or UNKNOWN_BATCH. `pause` admits no new gameplay work; `reset_session` invalidates old snapshots and pending batches; neither directly creates competing physics updates.
 
-Clock exchanges carry three endpoint times; the initiator records the fourth on full receipt. Preserve domain/session and quantify asymmetry/offset uncertainty. Refresh the fitted mapping every 1 s and expire it after 5 s or excessive uncertainty. Do not assume half the RTT is a one-way delay. The mapping algorithm and measured uncertainty are acceptance gates, not a claimed implementation.
+## Pi-reference clock exchange and mapping ownership
+
+The Pi owns runtime mapping and clock-dependent readiness. It maps each source monotonic domain with `T_pi = a * t_source + b`, retaining both offset and rate correction. Native timestamps remain unchanged. Mapping versions are immutable and scoped to source ID/session/clock plus Pi reference session/clock. Tracking/game/renderer may share a verified host-clock fit and evidence, but each producer session receives its own bound mapping record/ID; distinct clock domains and an independent camera clock need separate conversion evidence. See [clock definitions, estimator requirements and uncertainty](coordinates-and-time.md#pi-reference-clock-mapping).
+
+The proposed implementation default is to initiate exchanges from the Pi over each existing bidirectional control connection. An ESP32 can establish its registration connection to the Pi and still answer a Pi-originated exchange on that same socket; no new listener is needed. The Pi uses existing game/tracking control connections for the relevant laptop domains. Each exchange is correlated with its initiator session and `exchange_id`, and the response must come from the expected registered peer session.
+
+| Boundary | Clock | Existing field or evidence |
+| --- | --- | --- |
+| `A`: request send | Pi reference | `ClockExchange.source_send_us`; retained locally and echoed in the response |
+| `B`: complete request receipt | Peer source | `receiver_receive_us` in the response |
+| `C`: response send | Peer source | `receiver_send_us` in the response |
+| `D`: complete response receipt | Pi reference | Recorded locally by the Pi; retained with `A`, `B` and `C` in exchange evidence |
+
+The request has `response=false`; its receiver times are not yet available. The matched reply has `response=true` and echoes the request identity/time with the peer's two times. Envelope sender identity/session/clock still describes the actual sender; `source_send_us` describes the exchange initiator even when the peer sends the reply. Capture send timestamps close to the framed-message I/O boundary and receipt timestamps at complete-frame reception, keeping later validation/handling boundaries separate. Timestamp placement, buffering and TCP retransmission affect the observation and must appear in uncertainty and rejection evidence.
+
+Preserve all four raw times and both clock/session identities. Source-initiated diagnostic exchanges are also possible with the same message, but their fourth timestamp is local to that initiator and must be retained/exported before claiming a complete observation. No three-timestamp transcript may be treated as a full exchange. With Pi initiation and equal-rate approximation, the peer-minus-Pi offset is `((B-A) + (C-D))/2`, so conversion to Pi time subtracts that estimate; the maintained model additionally fits drift. [RFC 5905, section 8](https://www.rfc-editor.org/rfc/rfc5905.html#section-8) describes the four-timestamp offset/delay formulation. Neither that estimate nor a low-delay exchange proves symmetric paths, and one-way delay must never be reported as RTT/2.
+
+Filter high-queue/outlier observations and fit offset/drift robustly over recorded observations. Concrete fit windows, counts and weighting remain implementation choices, not additional fixed profile values. Export the Pi's immutable mapping versions and raw exchange evidence asynchronously through the debug path, including anchors, offset/rate and drift ppm, fit window, validity interval, last refresh/age, state/reason and time-dependent uncertainty bounds. The manifest's `clock_maps` registry resolves `details.clock_mapping_id` for a single-source conversion. Pi-issued mapping-use evidence or multi-source `details.clock_mapping_refs` entries bind each original event/sample/time to the version used by the runtime; missing versions or assignments remain unresolved. Raw ESP/laptop emitters never wait for a map or overwrite native timestamps. Signed/fractional fit parameters remain metadata, separate from unsigned raw timestamps. Debug consumes those exact versions; neither the collector nor viewer participates synchronously in clock readiness or gameplay. The [trace contract](https://github.com/motion-tennis/debug-units/blob/main/docs/trace-format.md) defines the evidence destination; its mapping validation remains planned.
+
+The existing candidate settings remain 1 s refresh, 5 s maximum age and at most 2 ms network mapping uncertainty per source. The accuracy gate requires a justified error bound; an offset estimate, fit residual or unknown bound is insufficient. Rate uncertainty grows the bound with age; expiry or excessive uncertainty invalidates readiness even if the control connection is alive. Different-source comparisons conservatively include both mapping bounds plus event/capture error, so two sources at 2 ms each permit 4 ms mapping uncertainty before those additional terms. Same-clock/session elapsed times need no mapping.
+
+The asynchronous mapping export also includes authoritative source-time selection intervals for trace-only events not converted during runtime processing. The viewer can use them for explicitly labeled display conversions; they never replace missing expected runtime-use evidence. Keep selection history, full source/reference bindings and validity boundaries. This allows diagnostic marker/render timestamps to be displayed without adding a synchronous debug-to-physics round trip; see the [clock contract](coordinates-and-time.md#pi-reference-clock-mapping).
+
+A Pi restart/reference discontinuity starts a new reference epoch and prevents future reuse of live mappings to the old reference. Source reboot/session change prevents future reuse of that source's mapping. Evaluate validity at the event's source-time interval and epoch; later expiry/reboot does not invalidate earlier history that used a valid mapping. Retain historical versions without silently refitting old events. Events without a mapping valid for their time retain causal IDs and separate local-clock debug lanes, with no cross-source duration claim. Required gameplay freshness/alignment gates fail closed, while the continuous 200 Hz stream, per-sample identities, local deadlines and explicit outcome accounting remain unchanged.
+
+## Doubles match contract extension
+
+**Agreed gameplay, planned schema work:** [doubles with automatic avatar movement](gameplay.md) expands the state beyond the ball-only messages currently defined in `motion.proto`. The current `Snapshot`, `StateUpdate` and `StatePublication` do not encode a complete roster, avatar state, serve/rally phase or score. They cannot be advertised as a working doubles protocol. Prepare and validate a versioned schema/profile revision before implementing or claiming interoperability for this feature; this planning change does not silently modify the current wire schema.
+
+The extension must specify the following together:
+
+| Contract area | Required design |
+| --- | --- |
+| Match configuration and roster | Immutable/revisioned match rules, four controller/person/avatar bindings, team membership, handedness, serving/receiving order and physical-station calibration; enforce [assignment uniqueness and activation](player-assignment.md) |
+| Player-slot convention | Proposed stable encoding `1=A1`, `2=A2`, `3=B1`, `4=B2`; `Association.player_slot` already exists, but a slot is neither a changing front/back role nor a court end. Document this convention in the new match profile and negotiate its identity |
+| Complete snapshot | Ball state, all avatar roots and necessary movement/coverage state, active roster revision, court ends, server/receiver, service side/attempt, toss/rally phase, bounce/point state and point/game/set/match score |
+| Query and atomic update | Retain required `ball_state_request`/`ball_state_response` and per-sample logical query identities. The Pi calculates one candidate match state; the PC accepts/rejects ball, avatars, rules and score together against one version |
+| Rule events | Stable identities for toss, serve attempt, legal contact, fault, let, point/game/set/match transitions and technical pause; duplicates/retries cannot advance score, attempts or avatars twice |
+| Publication and display | Both team viewports consume one committed match snapshot and ordered event stream. Serve/score/side changes and contact discontinuities have explicit events; camera transforms create no second simulation |
+
+Keep ordinary per-sample `feedback_result` outcomes separate from tennis-rule events. A sample `MISS` does not automatically lose a point; a completed swing without contact, second bounce, serve fault and technical tracking failure have different semantics. Periodic-only updates may move avatars/ball or finish a point without inventing a controller transaction. UI reset/team commands enter the control plane; normal serves come from the assigned player's pose/IMU lift-and-stroke sequence. Any operator-triggered serve is restricted to explicitly labeled diagnostic/test operation. The Pi remains the sole calculator and the PC remains the committed-state owner.
+
+The four continuous 200 Hz IMU streams, their measurement identities, additional diagnostic markers and proposed timing targets remain intact. Carry roster/team configuration through the versioned setup contract rather than adding team labels to every IMU sample. Specify complete serializers/validation and test the extended snapshot/update against the 1,200-byte datagram ceiling and maximum batch size; do not truncate decisions, silently fragment an atomic commit or raise the limit without a reviewed profile decision. Include extended-state deduplication, restart recovery, bounded resource/capacity tests and fixture updates in the revision. See [ADR 0010](adr/0010-doubles-auto-movement-gameplay.md).
 
 ## Error and lifecycle behavior
 

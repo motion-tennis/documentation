@@ -6,10 +6,11 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. The m
 
 ## Start here
 
-1. Start with the [master plan](docs/master-plan.md), [machine-readable reference profile](spec/reference-profile.json), [overview](docs/overview.md) and [requirements](docs/requirements.md).
+1. Start with the [master plan](docs/master-plan.md), [machine-readable reference profile](spec/reference-profile.json), [overview](docs/overview.md) and [requirements](docs/requirements.md). [MPU-6050 over I²C with Zephyr is selected for the first prototype](docs/adr/0008-mpu6050-zephyr-prototype.md). The [additional IMU marker design](docs/imu-trigger-markers.md) preserves the continuous stream; the [IMU assessment](docs/imu-selection.md) records threshold timing and driver-integration gates.
 2. Follow the [architecture and complete transaction](docs/architecture.md), including the mandatory physics-to-game ball-state request and response.
+   The agreed game is [2v2 doubles with automatic movement and gesture serving](docs/gameplay.md); [player assignment](docs/player-assignment.md) defines team slots and the existing controller/person confirmation workflow.
 3. Use [development setup](docs/development.md) to obtain the repositories and distinguish today's documentation checks from the proposed integrated startup.
-4. Before implementing interfaces, review the [protocol](docs/protocol.md), [ball-state consistency](docs/physics.md), and [timing and measurement](docs/timing.md).
+4. Before implementing interfaces, review the [protocol](docs/protocol.md), [ball-state consistency](docs/physics.md), [timing and measurement](docs/timing.md), and agreed [Pi-reference synchronization with drift correction](docs/coordinates-and-time.md#pi-reference-clock-mapping). The debug tool must show time uncertainty and mapping validity.
 5. Choose work from the [milestones and open decisions](docs/roadmap.md); validate against the [integration test matrix](docs/testing.md).
 
 ## Repositories and roles
@@ -32,10 +33,12 @@ Tracking, state service, visualization and debug collection share the laptop as 
 | Area | Reference |
 | --- | --- |
 | Scope, evidence, language | [Overview](docs/overview.md), [requirements](docs/requirements.md) |
-| Devices and data flow | [Master plan](docs/master-plan.md), [architecture](docs/architecture.md), [hardware](docs/hardware.md), [networking](docs/networking.md) |
+| Devices and data flow | [Master plan](docs/master-plan.md), [architecture](docs/architecture.md), [hardware](docs/hardware.md), [networking](docs/networking.md), [external AP versus Pi hotspot](docs/networking.md#external-ap-versus-pi-hotspot-comparison) |
 | Component design | [Controller](docs/controller.md), [tracking](docs/tracking.md), [physics](docs/physics.md), [game engine](docs/game-engine.md) |
 | Shared contracts | [Protocol](docs/protocol.md), [Protobuf schema](spec/motion.proto), [reference profile](spec/reference-profile.json), [coordinate systems, calibration, and clocks](docs/coordinates-and-time.md) |
-| Measurements | [Timing requirements and methodology](docs/timing.md) |
+| Measurements | [Timing requirements and methodology](docs/timing.md), [independent IMU trigger markers](docs/imu-trigger-markers.md) |
+| Prototype IMU | [Selected MPU-6050/Zephyr prototype, threshold interrupts and 200 Hz validation](docs/imu-selection.md) |
+| Game and players | [Doubles rules, automatic movement, serving and team views](docs/gameplay.md), [controller/person/team assignment](docs/player-assignment.md) |
 | Development and validation | [Setup](docs/development.md), [tracking stack](docs/tracking-stack.md), [debug environment](docs/debugging.md), [testing](docs/testing.md), [troubleshooting](docs/troubleshooting.md), [validation record](docs/validation.md) |
 | Future work and decisions | [Roadmap and open decisions](docs/roadmap.md), [architecture decision records](docs/adr/README.md) |
 

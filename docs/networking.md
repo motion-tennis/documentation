@@ -2,11 +2,11 @@
 
 [Documentation home](../README.md) · [Protocol](protocol.md) · [Timing](timing.md) · [Hardware](hardware.md)
 
-**Agreed context:** four battery-powered controllers must support wireless play; the available physics host is a Raspberry Pi 3 Model B and the camera/game host is a Windows laptop with an RTX 5080. **Proposed reference design:** the topology, UDP profile, limits and experiment gates below. **Implemented:** no component networking implementation or measured network performance exists yet.
+**Agreed context:** four battery-powered controllers must support wireless play; the available physics host is a Raspberry Pi 3 Model B and the camera/game host is a Windows laptop with an RTX 5080. **Agreed planning decision, 2026-10-25:** retain Wi-Fi and compare a dedicated external access point with a Pi-hosted hotspot. **Proposed reference design:** the UDP profile, limits and experiment gates below; the external AP remains the initial baseline. **Implemented:** no component networking implementation or measured network performance exists yet.
 
 ## Reference topology
 
-Use a dedicated access point for the four controllers. Connect both the Raspberry Pi and laptop to the same wired LAN through the access point's Ethernet switch or a separate switch. Use a wired USB Ethernet adapter for the laptop if its built-in ports require one. The Pi is a wired station, not the access point. Camera video stays local to the laptop; send compact pose observations to the Pi.
+**Variant A, initial baseline:** use a dedicated external access point for the four controllers. Connect both the Raspberry Pi and laptop to the same wired LAN through the access point's Ethernet switch or a separate switch. Use a wired USB Ethernet adapter for the laptop if its built-in ports require one. In A the Pi is a wired station, not the access point. Camera video stays local to the laptop; send compact pose observations to the Pi. The diagram below depicts A; [variant B and the controlled comparison](#external-ap-versus-pi-hotspot-comparison) are defined below.
 
 ```mermaid
 flowchart LR
@@ -38,14 +38,43 @@ Wi-Fi is not a deterministic delivery mechanism. It is the reference because it 
 
 | Candidate | Position in this plan | Reason and remaining work |
 | --- | --- | --- |
-| Dedicated Wi-Fi plus UDP | Reference wireless implementation | Direct ESP32-to-Pi IP communication, observable application packets, explicit expiry and no transport head-of-line blocking between datagrams |
+| Dedicated external AP plus UDP | Variant A; initial reference | Direct ESP32-to-Pi IP communication over the AP and wired LAN; measure full-path latency and failures |
+| Pi-hosted Wi-Fi hotspot plus UDP | Variant B; planned comparison | ESP32 devices associate to the Pi's onboard radio; laptop remains wired; measure hotspot/physics resource interaction and interface reachability |
 | USB CDC controller-to-Pi | Bench and measurement reference only | Removes the radio variable while preserving the same application identities; cables do not satisfy wireless gameplay requirements |
-| ESP-NOW plus an ESP32 gateway | Optional later comparison | Adds a radio gateway, framing, another queue and clock domain; it is still a connectionless Wi-Fi protocol, not a hard-real-time guarantee |
+| ESP-NOW plus an ESP32 gateway | Deferred; outside the current comparison | Adds a radio gateway, framing, another queue and clock domain; revisit only through an explicit later decision |
 | Custom radio, BLE, or a scheduled industrial wireless system | Separate architecture study if the reference fails | Requires its own capacity, latency, interference, gateway and diagnostic design; no compatible implementation is assumed |
 
 Espressif documents ESP-NOW's default 1 Mbps rate, its version-dependent payload sizes, and that successful MAC-layer delivery does not establish application receipt. It therefore still needs transaction correlation, expiry and application feedback. Replacing Wi-Fi/IP with ESP-NOW alone does not resolve the Windows/GPU/state-service timing dependencies. [ESP-NOW documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/network/esp_now.html).
 
-During active gameplay, the proposed ESP32 profile disables Wi-Fi modem sleep with `WIFI_PS_NONE` and leaves Bluetooth unused. This trades battery life for receive latency; characterize power consumption and runtime instead of quoting a guessed battery duration. Espressif notes that modem sleep may defer receive delivery to a DTIM or listen interval, and radio coexistence can still limit Wi-Fi activity. [Espressif power-saving guidance](https://docs.espressif.com/projects/esp-idf/en/release-v5.3/esp32s3/api-guides/wifi.html).
+During active gameplay, the ESP32 power policy disables Wi-Fi modem sleep and leaves Bluetooth unused. Pin and verify the supported configuration in the selected Zephyr ESP32 driver; ESP-IDF application API names do not establish a Zephyr interface. This trades battery life for receive latency; characterize power consumption and runtime instead of quoting a guessed battery duration. Espressif notes that modem sleep may defer receive delivery to a DTIM or listen interval, and radio coexistence can still limit Wi-Fi activity. Its [power-saving guidance](https://docs.espressif.com/projects/esp-idf/en/release-v5.3/esp32s3/api-guides/wifi.html) explains the radio behavior; the actual Zephyr configuration remains an implementation gate.
+
+## External AP versus Pi hotspot comparison
+
+The user-selected near-term transport remains ordinary Wi-Fi. Compare two deployment variants without changing the continuous stream or introducing an ESP-NOW gateway. Raspberry Pi documents hosted wireless networks on Pi 3 hardware, but the actual OS/driver configuration and four-controller performance remain feasibility gates. [Raspberry Pi hotspot documentation](https://www.raspberrypi.com/documentation/configuration/wireless/wireless-access-point.md).
+
+| Property | A: external access point | B: Pi hotspot |
+| --- | --- | --- |
+| Controller radio path | Four ESP32 devices to a dedicated 2.4 GHz AP; AP/switch to Pi Ethernet | Four ESP32 devices to the Pi 3 B's onboard 2.4 GHz hotspot |
+| Laptop path | Laptop and Pi on wired Ethernet | Laptop remains on wired Ethernet to the Pi, using the same switch/link setup where possible |
+| Pi responsibilities | Fusion/physics, normal network handling and buffered tracing | Same work plus hotspot service and wireless receive/transmit handling |
+| Practical question | Does separate AP hardware provide better measured tails and capacity? | Can the external AP be omitted while meeting the same correctness and timing gates? |
+
+**Fixed application workload:** identical firmware/services, schema/profile hashes, UDP/Protobuf payloads and application ports, TCP control semantics, 200 Hz per controller, four-player capacity, batch/queue/retry/expiry policy, and [independent marker](imu-trigger-markers.md) behavior. No extra priority, hidden resampling, changed response population or reduced diagnostics is allowed to improve one variant. The required Pi-to-game ball query/response and commit exchanges remain on wired Ethernet in both. Internet access is not required for gameplay.
+
+**Network setup gate:** before timing trials, record `network_variant` as `external_ap` or `pi_hotspot` in the run manifest. Freeze B's bridge or routed-subnet design for the comparison, record addresses/routes/interface bindings, and verify bidirectional controller input/feedback, TCP registration/clock/pairing, Pi-to-laptop pose/state/control traffic, and controller-to-Windows debug delivery on UDP 41030. A default hotspot does not by itself establish reachability to a collector on the wired subnet. If routing is selected, verify the required forwarding/return routes; if bridging is selected, verify actual driver/bridge support. Keep credentials out of the manifest. Changing bridge/routing mode creates a separately labeled configuration, not an unnoticed change within B.
+
+Change topology only between runs, then repeat session/endpoint registration and readiness checks. Prefer the initial comparison without NAT or an application relay; if NAT is necessary, label it separately and verify its effect on registered source endpoints and packet correlation. Confirm DHCP/address assignment and firewall rules before the steady-state measurement window. Failure of any setup path is a recorded feasibility failure, not a successful baseline trial.
+
+**Controlled trials:**
+
+1. Use a one-controller feasibility run for each variant, then the same synthetic/replay workload through the complete application chain. Record synthetic status; an echo-only test is diagnostic, not full-path acceptance.
+2. For each of one, two, three and four controllers, run three 10-minute baseline trials **per variant** after the same declared warmup. Alternate or randomize A/B order and record the order/seed. Keep camera/inference/render workload, firmware, sensor/trigger settings, instrumentation level and power conditions comparable. Follow with matched physical-play trials.
+3. Fix the surveyed channel, 20 MHz bandwidth, security mode, controller power-save policy, controller placement and interference conditions where supported. Only the tested AP should be active. Record AP/radio/driver versions, antenna placement, RSSI, Pi CPU/temperature/throttling and observed channel occupancy. Different radios/antennas remain part of the topology comparison; do not attribute every difference solely to software forwarding.
+4. Repeat matched load and fault cases: Pi CPU load, active laptop inference/rendering, radio interference, input/feedback loss, duplicates/reordering, hotspot/AP disconnect and recovery, and a stopped or overloaded debug collector. Distinguish injected faults from native loss.
+
+Report per-controller and aggregate median, p95, p99, observed maximum, deadline misses, packet/transaction failures, queue waits, query/commit RTT, batch service time and missed releases. Trace selected IMU markers through the same complete path in each variant and report marker populations separately from ordinary sample RTT. Keep missing/false/unresolved markers, timeouts and missing cues visible. Record association/reconnect time separately from steady-state RTT and measure controller energy use under comparable battery conditions when choosing the deployment.
+
+**Decision gate:** apply the same reference p99 response ≤30 ms, eligible electrical feedback ≤40 ms, local transaction expiry 50 ms, late-or-failed fraction ≤1%, and correctness/evidence requirements from [testing](testing.md) to both clean baselines. Fault trials evaluate bounded recovery rather than the clean-run performance ratio. Retain A until B has recorded evidence meeting those gates and a documented deployment decision considers timing tails, failures, Pi resource headroom and setup complexity. If neither passes, report both failures and identify the bottleneck; do not declare a winner from ping averages or silently relax the workload. This is a planned comparison, not a result or a hard-real-time guarantee.
 
 ## Application transport
 
@@ -123,8 +152,8 @@ On Windows, keep the authoritative snapshot/commit service independent of the re
 
 ## Network acceptance experiment
 
-Run the same four-controller transaction workload first through the USB bench transport, then through the dedicated Wi-Fi profile. Repeat with rendering and inference active, controlled CPU load, interfering traffic, disconnects and application-level loss/duplicate/reorder faults. Record complete application RTT, electrical-feedback latency, input/feedback loss, query and commit RTT, queue residence, batch-service distribution, expired transactions and simulation lag.
+Use the USB bench transport as an optional wired diagnostic reference, then execute the [external-AP/Pi-hotspot comparison](#external-ap-versus-pi-hotspot-comparison) with unchanged gameplay traffic. Repeat with rendering and inference active, controlled CPU load, interfering traffic, disconnects and application-level loss/duplicate/reorder faults. Record complete application RTT, electrical-feedback latency, input/feedback loss, query and commit RTT, queue residence, batch-service distribution, expired transactions and simulation lag.
 
-Use packet capture at the wired endpoints plus application trace identities to locate missing stages. An endpoint capture does not by itself reveal radio airtime, retransmission count or the receiver's application scheduling. Preserve all observation clock domains; use [clock mapping](coordinates-and-time.md) before claiming one-way durations. Follow the full [acceptance matrix](testing.md).
+Use packet capture at the relevant Pi WLAN/Ethernet/bridge interfaces and laptop endpoint plus application trace identities to locate missing stages. The Pi Ethernet capture alone does not observe controller gameplay packets terminating on its hotspot interface in B. Avoid counting one bridged packet captured on two interfaces twice. An endpoint capture does not by itself reveal radio airtime, retransmission count or the receiver's application scheduling. Preserve all observation clock domains; use [clock mapping](coordinates-and-time.md) before claiming one-way durations. Follow the full [acceptance matrix](testing.md).
 
 The deliverable is a measured deadline-aware wireless system with explicit failures. A claim of hard end-to-end real-time guarantees would require bounded hardware, OS, network, acquisition and execution behavior beyond the present Windows/GPU/Wi-Fi reference architecture.

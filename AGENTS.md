@@ -19,7 +19,7 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. Its f
 | Repository | Role and agreed hardware |
 | --- | --- |
 | `documentation` | Central architecture, requirements, interfaces, measurement methods, development guidance and decisions |
-| `motion-tennis-controller` | Four wireless battery ESP32 handhelds; S3/BMI270 reference proposed; captures samples and operates LED/haptic feedback |
+| `motion-tennis-controller` | Four wireless battery ESP32 handhelds; S3 reference proposed; MPU-6050 over I²C with Zephyr selected for the first prototype; captures samples and operates LED/haptic feedback |
 | `motion-tennis-camera-tracking` | Continuous webcam pose estimation on the Windows RTX 5080 laptop; active 2.5D body/joint input, later true 3D |
 | `motion-tennis-physics-engine` | Available Raspberry Pi 3 Model B; temporal fusion, ordered physics batches and sole ball-state calculations |
 | `motion-tennis-game-engine` | Windows committed-state service and separate renderer/UI; C++/SDL3 reference proposed |
@@ -27,7 +27,11 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. Its f
 
 Tracking and visualization may share one physical PC while remaining separate software components and repositories. Handheld controllers are ESP32 devices, not Raspberry Pis. Do not assume specific boards, sensors, motor drivers, pins, runtimes or rendering frameworks without repository evidence.
 
-The current [master plan](docs/master-plan.md) supersedes Kinect-only and Linux-first PC assumptions. The user selected webcam-first 2.5D play, later true 3D, the available Pi 3 B and wireless battery operation. RTMO-m and controller hardware/software details remain proposed until verified. A single RGB camera does not provide unambiguous metric wrist depth. Preserve active pose/IMU fusion and continuous camera acquisition independent of transactions. Kinect/depth/stereo are later alternatives; `libfreenect2` alone is not a skeleton tracker.
+Wi-Fi is the current agreed transport direction. The [planned topology comparison](docs/networking.md#external-ap-versus-pi-hotspot-comparison) keeps external AP plus wired Pi/laptop as baseline A and adds Pi-hosted hotspot as B with the laptop still wired. Preserve the same application stream, protocol, deadlines and marker behavior in both; record deployment endpoints/interfaces and prove debug-collector reachability. Do not present the Pi-hotspot alternative as prohibited, selected or measured faster. ESP-NOW is deferred outside this comparison.
+
+The current [master plan](docs/master-plan.md) supersedes Kinect-only and Linux-first PC assumptions. The user selected webcam-first 2.5D play, later true 3D, the available Pi 3 B, wireless battery operation and MPU-6050 with Zephyr for the first controller prototype. RTMO-m, the exact ESP32 board, breakout, dependency versions and wiring remain proposed or open; selection does not establish verified functionality. A single RGB camera does not provide unambiguous metric wrist depth. Preserve active pose/IMU fusion and continuous camera acquisition independent of transactions. Kinect/depth/stereo are later alternatives; `libfreenect2` alone is not a skeleton tracker.
+
+The user selected [2v2 doubles with automatic avatar movement](docs/gameplay.md), controller-lift toss plus overhead serve, normal tennis scoring and two elevated views from behind the respective teams. Physical players need not chase the ball; camera/IMU fusion supplies body-relative gestures around a Pi-controlled virtual avatar root. Physical stations are not virtual court lanes. Preserve the [existing explicit controller/person association and ACK/resume procedure](docs/player-assignment.md), now with stable A1/A2/B1/B2 team slots. Pi calculates ball, avatars, serve/rules and score; the PC stores the atomic committed match. Current ball-only wire fields require the [planned versioned extension](docs/protocol.md#doubles-match-contract-extension); do not claim they already encode this game. Match length, split layout and detailed movement/gesture tuning remain proposed unless explicitly accepted.
 
 ## Inspect evidence and label status
 
@@ -48,7 +52,7 @@ Do not present proposed transports, schemas, consistency mechanisms, numerical l
 
 Keep the complete transaction explicit in relevant descriptions and diagrams:
 
-1. An IMU interrupt or defined measurement boundary occurs on an ESP32.
+1. A regular IMU data-ready interrupt or defined sampling boundary occurs on an ESP32.
 2. The controller records `t0` and assigns a unique transaction identity.
 3. The controller sends movement data to the Raspberry Pi.
 4. Physics resolves the controller/person association and selects suitable continuously acquired skeleton data.
@@ -61,7 +65,9 @@ Keep the complete transaction explicit in relevant descriptions and diagrams:
 
 **Never remove or replace the required ball-state request and response during cleanup.** The additional proposed commit acknowledgement does not replace either arrow. Invalid input or unavailable tracking may terminate early with a correlated error; do not fabricate a physics decision.
 
-The current proposed protocol batches up to eight logical queries (at most two per controller) per 5 ms release, with one explicit query key per input and one common versioned snapshot. Each IMU interrupt remains a distinct transaction. Atomic ordered batch commit preserves per-input results; periodic-only batches keep the ball moving. Do not silently decimate samples or turn a shared datagram into an uncorrelated transaction. Use [reference-profile.json](spec/reference-profile.json) and [motion.proto](spec/motion.proto) as canonical proposed values/types; UDP/Protobuf live traffic supersedes the earlier TCP/JSON proposal.
+The current proposed protocol batches up to eight logical queries (at most two per controller) per 5 ms release, with one explicit query key per input and one common versioned snapshot. Each regular sampling boundary remains a distinct transaction. Atomic ordered batch commit preserves per-input results; periodic-only batches keep the ball moving. Do not silently decimate samples or turn a shared datagram into an uncorrelated transaction. Use [reference-profile.json](spec/reference-profile.json) and [motion.proto](spec/motion.proto) as canonical proposed values/types; UDP/Protobuf live traffic supersedes the earlier TCP/JSON proposal.
+
+The user-confirmed [additional IMU threshold marker](docs/imu-trigger-markers.md) is diagnostic only: preserve the continuous 200 Hz stream, payloads, ordering, priorities, batching and expiry. Its IRQ creates `t_trigger` and a session-scoped trigger ID, not another gameplay transaction or a replacement `t0`. Join asynchronous trace records explicitly to the existing sample/transaction and full query/response/commit/feedback path. Unknown links remain unresolved. Treat a trigger as a swing candidate and report marker metrics separately. [ADR 0008](docs/adr/0008-mpu6050-zephyr-prototype.md) selects MPU-6050 over I²C with Zephyr for the first prototype. Verify exact ODR, detector semantics, the single shared INT and early timestamp capture against the [IMU study](docs/imu-selection.md); the necessary driver extension is not implemented. Later sensor alternatives do not reopen this prototype decision automatically.
 
 The game stores committed ball state; physics calculates changes. Keep the [proposed consistency model](docs/physics.md) explicit: one serialized physics writer for periodic and controller work, version-checked commits, session/epoch fencing, duplicate handling, and hit/miss feedback after commit acceptance. This mechanism remains proposed until implemented. Avoid two components independently advancing conflicting authoritative states; rendering interpolation is not a physics commit.
 
@@ -71,12 +77,13 @@ Preserve transaction/session/sample/frame/event identities and original timestam
 
 Follow [timing requirements](docs/timing.md) and [coordinate and clock conventions](docs/coordinates-and-time.md):
 
-- `t0` is the specified controller-side IMU interrupt/measurement boundary.
+- `t0` is the specified controller-side regular sampling boundary; the independent threshold IRQ has its own `t_trigger`.
 - `tr` is complete framed-message reception on that controller, retained only after validating a matching, timely application result; post-receipt validation has its own boundary.
 - `t1` is electrical feedback activation, not merely an output-enqueue call. Record separate LED/motor timestamps when necessary and declare which defines the metric.
 - Application response time is `tr - t0`; time to electrical feedback is `t1 - t0`. These same-ESP32 differences do not require cross-device clock synchronization.
 - Include queueing, processing, pose waiting, the required ball query/response and any proposed commit wait in the measured transaction. Distinguish sensor latency before `t0`, earlier skeleton acquisition, electrical activation, physical vibration onset and display photons.
 - Preserve capture, arrival, processing-completion and simulation times separately. Cross-device comparisons require explicit clock mapping with uncertainty; never infer one-way delay as half the RTT.
+- The user selected the Pi monotonic clock as the shared experiment reference, affine offset/drift correction for all ESP32 and laptop clock domains, and visible uncertainty in the debug tool. Follow [ADR 0009](docs/adr/0009-pi-reference-clock-mapping.md) and the [clock contract](docs/coordinates-and-time.md#pi-reference-clock-mapping). The Pi owns versioned runtime maps; debug uses those same versions while preserving raw source times, identities and reference epochs. Show uncertainty intervals and invalid mappings explicitly. The existing 1 s refresh, 5 s expiry and 2 ms/source accuracy gate remain unverified reference values; clock mapping and its viewer/auditor are not implemented.
 - Current provisional targets are 200 Hz measurements per controller, a 5 ms tick, batch service p99 at most 4 ms, application response p99 at most 30 ms, eligible electrical cue p99 at most 40 ms, and local controller expiry at 50 ms. The earlier 25 ms uplink value is historical; the 15 ms decision-to-electrical sub-path target remains provisional. None is a hard guarantee. This Windows/GPU/Wi-Fi profile does not prove hard end-to-end real-time behavior.
 - All transactions receive outcome accounting, but haptic cues occur only for semantic hits/completed missed swings. Noneligible samples have no fabricated `t1`. Keep original source timestamps and historical IMU/pose alignment; arrival freshness is not capture freshness.
 - Account for every started measurement, including misses, invalid inputs, drops, rejected/late responses, timeouts and pending observations. Report sample counts, median, tail percentiles, observed maximum, deadline misses and failures. Timeouts are censored observations, not fabricated completion latencies.

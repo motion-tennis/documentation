@@ -12,7 +12,7 @@ Use one monotonic ESP32 timer and the same boot/session for all three timestamps
 
 | Timestamp | Event and recording rule |
 | --- | --- |
-| `t0` | The specified IMU interrupt/measurement boundary starting the identified transaction. Prefer hardware capture if supported; otherwise timestamp the earliest bounded interrupt handler and characterize its delay from the physical interrupt edge. |
+| `t0` | The specified regular IMU data-ready interrupt/sampling boundary starting the identified transaction. Prefer hardware capture if supported; otherwise timestamp the earliest bounded interrupt handler and characterize its delay from the physical interrupt edge. |
 | `tr` | Complete application-message receipt for the matching `feedback_result`. Capture a candidate time when the full UDP payload or bench-transport frame becomes available, then retain it as `tr` only after protocol, identity, payload and expiry validation. A transport receipt acknowledgement is not this event. |
 | `t1` | The electrical transition that activates the selected feedback output, such as LED drive or motor-driver enable/PWM start. A function call that only queues output is not electrical actuation. Verify timestamp placement against an electrical trace. |
 
@@ -25,6 +25,10 @@ Keep `t_led` and `t_motor` separately when their outputs differ, and state which
 Every 200 Hz IMU boundary has its own transaction and accounting record. Radio or Pi batching must not move `t0` to a later send time, suppress intermediate transaction IDs, or omit delay spent waiting for a batch.
 
 ## Complete measured path
+
+The agreed [threshold-marker extension](imu-trigger-markers.md) adds a separate `t_trigger` on the same ESP32 clock. It leaves every regular `t0`, transaction and deadline unchanged. The proposed primary marker metric is `tr_linked - t_trigger`, where an explicit link identifies the first regular sample captured at or after the trigger. Include the wait for that sample and its ordinary processing; do not use the next arriving response. Uncertain links remain unresolved. Semantic swing/cue endpoints need their own explicit links and separate distributions. The existing 30/40 ms targets and 50 ms expiry do not become trigger-relative limits.
+
+At 200 Hz the nominal sample period is 5 ms. Hardware detector rate, filtering, duration and IRQ handling are separate sources of latency; a delayed RTOS callback cannot stand in for the IRQ edge. Measure pre-IRQ detection delay separately from event-to-response time. The [IMU study](imu-selection.md) records limits and required Zephyr integration for the selected MPU-6050 prototype, including uncertainty when motion and data-ready share its single INT.
 
 The response interval includes controller work after `t0`, wireless delivery, receiver scheduling, Pi queueing, pose lookup and any permitted waiting, the **required ball-state request and response**, fusion/collision calculation, the proposed atomic commit exchange, feedback transmission and complete reception. Electrical-feedback time additionally includes local validation and output scheduling. Retries and queueing are part of the path, not removable measurement overhead.
 
@@ -80,8 +84,8 @@ This allocation guides implementation and diagnosis. It is **not measured**, not
 
 | Stage | Routine allocation | Responsibility |
 | --- | --- | --- |
-| Interrupt boundary to encoded input handed to transport | 0.5 ms | Controller interrupt/task/SPI path |
-| Controller-to-Pi wireless and receive scheduling | 5.0 ms | Dedicated AP, controller radio and Pi receiver |
+| Interrupt boundary to encoded input handed to transport | 0.5 ms | Zephyr controller interrupt/task/MPU-6050 I²C path; allocation requires measurement |
+| Controller-to-Pi wireless and receive scheduling | 5.0 ms | Controller radio, selected external AP or Pi hotspot, and Pi receiver; same provisional allocation for both comparison variants |
 | Wait for next eligible 5 ms batch | 5.0 ms | Pi admission/scheduler |
 | Pose selection and validity checks | 0.5 ms | Pi fusion input stage |
 | Required ball snapshot query and response | 1.0 ms | Wired LAN and independent Windows state service |
@@ -114,7 +118,9 @@ Preserve source capture time and its meaning, receiver arrival, processing start
 
 Single-camera pose inference does not remove time or depth uncertainty. If the camera API only exposes a host-arrival timestamp, record that limitation and characterize the acquisition delay; do not relabel receipt as exposure. A measured exposure-to-pose delay belongs beside the application RTT distribution, not hidden inside a claimed timer resolution.
 
-A mapping such as `T = a * t + b` must retain its identifier, validity interval, drift estimate and uncertainty. Reboot, drift or expired calibration invalidates it. Never assume half an RTT equals one-way delay. Local Pi query and commit RTT measurements are valid without cross-device synchronization, but they do not separate uplink and downlink latency. See [clock mapping](coordinates-and-time.md).
+The agreed clock design maps each source to the Pi monotonic reference as `T_pi = a * t_source + b`, with offset and drift correction. Preserve original times and the Pi-issued mapping ID, source/reference sessions, fit and validity intervals, age and uncertainty. The debug viewer uses the same mapping version as the runtime and shows uncertainty bands and numeric bounds; source/reference restarts and expired or excessive-uncertainty maps forbid future cross-device timing claims while retaining valid historical evidence. Do not use a newly fitted map silently on older events. Local Pi query and commit RTT measurements remain valid without cross-device mapping, but do not separate uplink and downlink latency. See [clock mapping](coordinates-and-time.md#pi-reference-clock-mapping).
+
+For a cross-source interval, conservatively combine the endpoint mapping and event-capture uncertainties without double-counting shared components. Two source bounds of ±2 ms permit ±4 ms relative mapping uncertainty; they do not establish a global ±2 ms timeline. Overlapping time intervals cannot establish a strict temporal order, even when message IDs establish causality. Report unresolved duration/order rather than clamp a negative estimated duration to zero. Same-clock durations avoid cross-source offset error and must be computed directly; local timer scale and boundary uncertainty still apply. These bounds require validation, including asymmetric network delays, rather than a symmetry assumption or RTT/2 claim.
 
 Electrical motor activation differs from physical vibration onset. Processing a scene update differs from display photons. A microsecond-resolution counter does not prove microsecond accuracy. An observed maximum describes a finite experiment, not a proven worst-case bound.
 

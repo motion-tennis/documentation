@@ -1,5 +1,5 @@
 {
-  "profile_id": "webcam-pi3-wireless-v1",
+  "profile_id": "webcam-pi3-wireless-v2",
   "status": "proposed_unverified_reference",
   "protocol_version": "0.2-proposed",
   "players": 4,
@@ -7,7 +7,9 @@
     "physics_host": "Raspberry Pi 3 Model B",
     "application_host": "Windows laptop with user-reported NVIDIA RTX 5080",
     "controller_candidate": "ESP32-S3-DevKitC-1-N8R8",
-    "imu_candidate": "BMI270 over SPI",
+    "imu_candidate": "MPU-6050 over I2C",
+    "controller_firmware": "Zephyr",
+    "imu_firmware_selection_status": "agreed_first_prototype_unverified",
     "camera": "USB webcam; exact Facecam generation or alternative requires validation",
     "position_mode": "plane_2_5d",
     "wireless_battery_required": true
