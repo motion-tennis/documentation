@@ -22,13 +22,13 @@ Do not copy every specification into every task. Pin the shared revision and lin
 | Location | Purpose / evidence |
 | --- | --- |
 | `docs/` | Shared designs, stage/status/workflow guidance and recorded validation; design text is not runtime proof. |
-| `spec/motion.proto` | Existing proposed ball-only wire schema. Full doubles state needs a reviewed versioned extension before runtime implementation. |
+| `spec/motion.proto` | Proposed v0.3 full-match wire schema, exercised by generated host-codec and semantic fixtures; runtime implementation remains later work. |
 | `spec/reference-profile.json` | Existing reference values and selected hardware metadata; numerical targets are unmeasured. |
 | `scripts/check_docs.py` | Implemented local Markdown/link, JSON/profile and basic Mermaid structure checker. |
 | `scripts/render_progress.py`, `assets/project-progress.svg` | Generate the README progress view from the central ledger; the documentation checker detects stale views. See [dashboard updates](project-status.md#updating-the-readme-dashboard). |
 | `docs/validation.md` | Historical checks and explicit validation limitations. |
 
-No game or device runtime is implemented here. The only current runtime-adjacent tool outside this repository is the offline trace auditor in `debug-units`. Inspect [project status](project-status.md) and current source before updating implementation claims.
+No game or device runtime is implemented here. This repository contains offline [contract validation](s0-baseline.md); the offline trace auditor is in `debug-units`. Inspect [project status](project-status.md) and current source before updating implementation claims.
 
 ## Available checks
 
@@ -43,4 +43,4 @@ The checker inspects available sibling repositories. Missing siblings are skips,
 
 ## First bounded work
 
-Consult the active stage instead of choosing an entire component backlog. The remaining S0 work is the reviewed complete-match contract, compatible fixture/resource definitions and component contract reviews. The next task can address one producer/consumer boundary and list its unresolved decisions; it should not implement all consumers. Use the [shared brief and handoff](contribution-workflow.md).
+Consult the active stage instead of choosing an entire component backlog. The technical S0 baseline and component reviews are recorded in [S0 evidence](s0-baseline.md); consult the ledger for remaining acceptance work. The next task can address one producer/consumer boundary and list its unresolved decisions; it should not implement all consumers. Use the [shared brief and handoff](contribution-workflow.md).

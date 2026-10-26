@@ -59,7 +59,7 @@ The user-selected near-term transport remains ordinary Wi-Fi. Compare two deploy
 | Pi responsibilities | Fusion/physics, normal network handling and buffered tracing | Same work plus hotspot service and wireless receive/transmit handling |
 | Practical question | Does separate AP hardware provide better measured tails and capacity? | Can the external AP be omitted while meeting the same correctness and timing gates? |
 
-**Fixed application workload:** identical firmware/services, schema/profile hashes, UDP/Protobuf payloads and application ports, TCP control semantics, 200 Hz per controller, four-player capacity, batch/queue/retry/expiry policy, and [independent marker](imu-trigger-markers.md) behavior. No extra priority, hidden resampling, changed response population or reduced diagnostics is allowed to improve one variant. The required Pi-to-game ball query/response and commit exchanges remain on wired Ethernet in both. Internet access is not required for gameplay.
+**Fixed application workload:** identical firmware/services, schema/profile hashes, UDP/Protobuf controller/pose payloads, framed TCP state messages and application ports, TCP control semantics, 200 Hz per controller, four-player capacity, batch/queue/retry/expiry policy, and [independent marker](imu-trigger-markers.md) behavior. No extra priority, hidden resampling, changed response population or reduced diagnostics is allowed to improve one variant. The required Pi-to-game ball query/response and commit exchanges remain on wired Ethernet in both. Internet access is not required for gameplay.
 
 **Network setup gate:** before timing trials, record `network_variant` as `external_ap` or `pi_hotspot` in the run manifest. Freeze B's bridge or routed-subnet design for the comparison, record addresses/routes/interface bindings, and verify bidirectional controller input/feedback, TCP registration/clock/pairing, Pi-to-laptop pose/state/control traffic, and controller-to-Windows debug delivery on UDP 41030. A default hotspot does not by itself establish reachability to a collector on the wired subnet. If routing is selected, verify the required forwarding/return routes; if bridging is selected, verify actual driver/bridge support. Keep credentials out of the manifest. Changing bridge/routing mode creates a separately labeled configuration, not an unnoticed change within B.
 
@@ -78,12 +78,12 @@ Report per-controller and aggregate median, p95, p99, observed maximum, deadline
 
 ## Application transport
 
-The [protocol specification](protocol.md) owns the exact schemas, and [reference profile](../spec/reference-profile.json) owns the configuration values. The new reference profile is `0.2-proposed`: Protocol Buffers application messages in UDP datagrams, replacing the earlier unimplemented TCP/JSON proposal. Separate TCP control connections handle setup, pairing, calibration, recovery and run administration. JSON remains useful for human-readable examples and offline trace exports; it is not the live gameplay encoding.
+The [protocol specification](protocol.md) owns the exact schemas, and [reference profile](../spec/reference-profile.json) owns the configuration values. The proposed reference profile is `0.3-proposed`: Protobuf controller/feedback and pose/status messages use bounded UDP; Pi/PC query/commit messages use a dedicated bounded TCP state stream under [ADR 0011](adr/0011-full-match-contract-and-state-stream.md). Separate TCP control connections handle setup, pairing, calibration, recovery and run administration. JSON remains useful for human-readable examples and offline trace exports; it is not the live gameplay encoding.
 
 | Listener | Port / transport | Purpose |
 | --- | --- | --- |
 | Pi controller input | 41000 / UDP | Controller measurements and matching feedback through the registered endpoint |
-| Windows game state | 41010 / UDP | Required ball queries/responses and atomic updates/commit results |
+| Windows game state | 41010 / TCP | Required ball queries/responses and atomic updates/commit results |
 | Pi pose input | 41020 / UDP | Continuous timestamped tracking observations |
 | Windows debug collector | 41030 / UDP | Bounded asynchronous trace delivery |
 | Pi control | 41040 / TCP | Session, association and physics administration |
@@ -100,7 +100,7 @@ These are proposed application listeners, not already running services or reserv
 - Keep telemetry and administration separate from gameplay queues and state ownership. Capture failure or a slow debug consumer must not block controller feedback or a commit.
 - A receipt acknowledgement or UDP send completion never substitutes for `feedback_result` or `state_commit_result`.
 
-A batch state update must remain one atomic update and fit the payload cap. If it cannot, reduce/compact its schema or fail the configuration; never split it into independently committed pieces. Large diagnostic blobs belong in the debug/export path. Pose messages may represent one person from a frame so that four-person data does not require fragmented datagrams; the protocol must retain the common frame identity, timestamps, presence/loss information and any completeness rules. Do not infer a missing person from one missing packet.
+A batch state update must remain one atomic update and fit the 8,192-byte state-stream envelope cap. A four-byte big-endian prefix frames each message. One batch in flight, three outbound frames and an 8 ms partial-frame deadline bound resources; query/commit/controller deadlines remain unchanged. Close malformed or incomplete timed-out streams and recover ambiguous commits over separate control. A full send or TCP acknowledgement never proves commit. If a candidate cannot fit, reject/pause it visibly; never split it into independently committed pieces. Large diagnostic blobs belong in the debug/export path. Pose messages may represent one person from a frame so that four-person data does not require fragmented datagrams; the protocol must retain the common frame identity, timestamps, presence/loss information and any completeness rules. Do not infer a missing person from one missing packet.
 
 ## Four-controller load and batching
 

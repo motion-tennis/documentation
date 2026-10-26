@@ -1,7 +1,7 @@
 {
-  "profile_id": "webcam-pi3-wireless-v2",
+  "profile_id": "webcam-pi3-doubles-v3",
   "status": "proposed_unverified_reference",
-  "protocol_version": "0.2-proposed",
+  "protocol_version": "0.3-proposed",
   "players": 4,
   "hardware": {
     "physics_host": "Raspberry Pi 3 Model B",
@@ -37,7 +37,15 @@
     "catchup_ticks": 4,
     "dedup_retention_us": 2000000,
     "dedup_batches": 512,
-    "maximum_stream_frame_bytes": 65536
+    "maximum_stream_frame_bytes": 65536,
+    "state_stream_frame_bytes": 8192,
+    "state_stream_outbound_frames": 3,
+    "state_stream_inbound_frames": 1,
+    "rule_events_per_batch": 16,
+    "completed_sets": 5,
+    "reason_utf8_bytes": 128,
+    "role_utf8_bytes": 16,
+    "configuration_json_bytes": 4096
   },
   "timing_us": {
     "response_p99_target": 30000,
@@ -60,17 +68,18 @@
     "clock_mapping_refresh": 1000000,
     "clock_mapping_maximum_age": 5000000,
     "connection_heartbeat": 250000,
-    "connection_expiry": 1000000
+    "connection_expiry": 1000000,
+    "state_stream_assembly_timeout": 8000
   },
   "ports": {
     "controller_input_udp_pi": 41000,
-    "game_state_udp_windows": 41010,
     "pose_udp_pi": 41020,
     "trace_udp_windows": 41030,
     "control_tcp_pi": 41040,
     "control_tcp_game": 41041,
     "control_tcp_tracking": 41042,
-    "debug_control_tcp_windows": 41043
+    "debug_control_tcp_windows": 41043,
+    "game_state_tcp_windows": 41010
   },
   "acceptance": {
     "baseline_duration_seconds": 600,
@@ -79,5 +88,66 @@
     "maximum_log_loss_for_acceptance": 0,
     "maximum_wrong_player_associations": 0,
     "maximum_duplicate_state_commits": 0
+  },
+  "match_contract": {
+    "status": "proposed_contract_baseline_pending_human_acceptance",
+    "slots": {
+      "1": "A1",
+      "2": "A2",
+      "3": "B1",
+      "4": "B2"
+    },
+    "sets_to_win_allowed": [
+      1,
+      2,
+      3
+    ],
+    "default_sets_to_win": 2,
+    "games_to_win_set": 6,
+    "minimum_game_lead": 2,
+    "tiebreak_at_games": 6,
+    "tiebreak_points_to_win": 7,
+    "tiebreak_minimum_lead": 2,
+    "final_set_tiebreak": true,
+    "decision_event_index_min": 0,
+    "decision_event_index_max": 7,
+    "rule_event_index_min": 8,
+    "rule_event_index_max": 23,
+    "canonical_configuration": "deterministic_protobuf_no_unknown_fields_sorted_slots"
+  },
+  "contract_memory_budgets_bytes": {
+    "generated_envelope": 16384,
+    "controller_contract_storage": 65536,
+    "physics_contract_storage": 8388608,
+    "game_contract_storage": 8388608
+  },
+  "transport": {
+    "udp_bodies": [
+      "controller_input",
+      "feedback_result",
+      "skeleton_frame",
+      "frame_status"
+    ],
+    "state_stream_bodies": [
+      "ball_state_request",
+      "ball_state_response",
+      "state_update",
+      "state_commit_result",
+      "hello",
+      "hello_result"
+    ],
+    "publication_stream_bodies": [
+      "state_publication"
+    ],
+    "control_stream_bodies": [
+      "hello",
+      "hello_result",
+      "association",
+      "clock_exchange",
+      "control_command",
+      "match_setup"
+    ],
+    "state_stream_framing": "uint32_big_endian_length_then_one_envelope",
+    "control_stream_framing": "uint32_big_endian_length_then_one_envelope"
   }
 }

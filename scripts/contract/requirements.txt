@@ -1,0 +1,6 @@
+grpcio==1.85.0
+grpcio-tools==1.78.0
+nanopb==0.4.9.1
+protobuf==6.33.5
+setuptools==84.2.1
+typing_extensions==4.16.0

@@ -15,7 +15,7 @@
 | F-05 | Pi calculates hit/miss and resulting ball motion | Deterministic fixtures, collision/contact-latch and fusion tests |
 | F-06 | Every generated transaction ends in a correlated result or counted local failure | Includes misses, invalid inputs, overload, loss, timeout and reporting-cutoff pending work |
 | F-07 | Feedback distinguishes hits, completed missed swings and faults | Bounded semantic cues, eligibility flags, electrical traces; no 200 Hz pulse assumption |
-| F-08 | Windows stores sole committed match state and provides UI/visualization | Versioned extension of the current ball-only contract; atomic ball/avatar/serve/score tests and independent renderer |
+| F-08 | Windows stores sole committed match state and provides UI/visualization | Versioned v0.3 match contract; atomic ball/avatar/serve/score tests and independent renderer |
 | F-09 | Resolve four-player concurrency and periodic motion without competing state writers | Ordered atomic batches, CAS/version checks, bounded catch-up, session/epoch fencing |
 | F-10 | Preserve original capture timestamps and source IDs through processing | Separate capture/arrival/compute/simulation trace fields with clock domains |
 | F-11 | Explicit connection, association, calibration, loss and restart handling | Readiness barriers; no silent nearest-person reassignment or replayed haptics |
@@ -29,9 +29,9 @@
 | F-19 | Show one shared match from both teams' elevated rear views | Two labeled viewports consume the same committed version; end changes alter camera placement, not teams, handedness or authoritative geometry |
 | F-20 | Reuse explicit controller/person association for team setup | [Assignment contract](player-assignment.md), uniqueness, guided identification, operator confirmation, install ACK/resume and four-ready start; no silent reassignment |
 
-F-04 does not require invalid inputs to query the game before rejection. The required exchange cannot be replaced by an old pushed snapshot or transport acknowledgement. A batched datagram must still contain every selected logical query.
+F-04 does not require invalid inputs to query the game before rejection. The required exchange cannot be replaced by an old pushed snapshot or transport acknowledgement. A batched framed state message must still contain every selected logical query.
 
-F-16 through F-20 are agreed gameplay requirements described in [gameplay](gameplay.md). The current ball-only schema cannot satisfy them without a versioned match-state extension covering avatars, roster, serve/rules and score. Keep the unchanged IMU stream and explicit transaction accounting while extending atomic state/query/publication contracts. Full doubles needs four humans; one-to-three-controller capacity/fault trials remain diagnostic integration cases.
+F-16 through F-20 are agreed gameplay requirements described in [gameplay](gameplay.md). The proposed v0.3 schema covers their match-state interface; generated host fixtures validate the contract, while their runtime behavior remains unimplemented. Keep the unchanged IMU stream and explicit transaction accounting while extending atomic state/query/publication contracts. Full doubles needs four humans; one-to-three-controller capacity/fault trials remain diagnostic integration cases.
 
 ## Nonfunctional requirements
 

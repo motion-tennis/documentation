@@ -2,7 +2,7 @@
 
 Motion Tennis is a multiplayer tennis demonstrator for up to four players. The main objective is to make distributed processing, latency, synchronization, data freshness, and measurable timing behavior visible. Sophisticated graphics are secondary.
 
-**Current status:** six repositories contain coordinated documentation. `debug-units` also provides an offline trace checker and synthetic integrity tests; the controller, tracking, physics and game runtimes are not implemented. The current reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers, and webcam-first 2.5D gameplay. Detailed stacks and budgets are proposed, unverified implementation targets.
+**Current status:** six repositories contain coordinated documentation. This repository also provides generated host-codec and offline match-contract checks; `debug-units` provides an offline trace checker and synthetic integrity tests; the controller, tracking, physics and game runtimes are not implemented. The current reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers, and webcam-first 2.5D gameplay. Detailed stacks and budgets are proposed, unverified implementation targets.
 
 ## Project progress
 
@@ -11,11 +11,11 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. The m
 
 [![Project stage dashboard](assets/project-progress.svg)](docs/project-status.md)
 
-**S0 — Shared baseline** · Active, incomplete · Evidence reviewed **2026-10-25**.
+**S0 — Shared baseline** · Active, incomplete · Evidence reviewed **2026-10-26**.
 
-**Accepted core gates: 0/7** · **Active gate checklist: 1/6**. These count reviewed gates and checklist items, not overall completion.
+**Accepted core gates: 0/7** · **Active gate checklist: 5/6**. These count reviewed gates and checklist items, not overall completion.
 
-**Next checkpoint:** Review the versioned roster/avatar/serve/score extension with both physics and game consumers and the diagnostic contract. Current `motion.proto` and `reference-profile.json` are not a completed doubles baseline.
+**Next checkpoint:** Record human acceptance of the S0 baseline, ADR 0011 and documented assumptions; then release S1.
 
 [Evidence and checklist](docs/project-status.md#active-gate-checklist) · [Stage plan](docs/project-stages.md) · [Take a bounded task](docs/contribution-workflow.md#task-brief)
 
@@ -55,6 +55,7 @@ Tracking, state service, visualization and debug collection share the laptop as 
 | Contribution scope and sequence | [Orientation](docs/orientation.md), [local workflow](docs/workflow.md), [shared stages](docs/project-stages.md), [current status](docs/project-status.md), [task and handoff template](docs/contribution-workflow.md) |
 | Devices and data flow | [Master plan](docs/master-plan.md), [architecture](docs/architecture.md), [hardware](docs/hardware.md), [networking](docs/networking.md), [external AP versus Pi hotspot](docs/networking.md#external-ap-versus-pi-hotspot-comparison) |
 | Component design | [Controller](docs/controller.md), [tracking](docs/tracking.md), [physics](docs/physics.md), [game engine](docs/game-engine.md) |
+| S0 evidence and reproduction | [Technical baseline, checks, assumptions and component handoffs](docs/s0-baseline.md) |
 | Shared contracts | [Protocol](docs/protocol.md), [Protobuf schema](spec/motion.proto), [reference profile](spec/reference-profile.json), [coordinate systems, calibration, and clocks](docs/coordinates-and-time.md) |
 | Measurements | [Timing requirements and methodology](docs/timing.md), [independent IMU trigger markers](docs/imu-trigger-markers.md) |
 | Prototype IMU | [Selected MPU-6050/Zephyr prototype, threshold interrupts and 200 Hz validation](docs/imu-selection.md) |

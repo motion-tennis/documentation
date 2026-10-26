@@ -4,7 +4,7 @@
 
 Decision date: 2026-10-25. **Agreed design:** use **MPU-6050 over I²C with Zephyr for the first prototype**, preserve the continuous 200 Hz stream, and develop the independent hardware marker without gating gameplay transmission. The user's reported MPU-6050 availability supports starting with this device. **Open:** measured marker feasibility and final production hardware. **Implemented:** documentation and source review only; no firmware, hardware or driver integration was tested. See [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md).
 
-The [reference profile](../spec/reference-profile.json) records this prototype selection as `webcam-pi3-wireless-v2`. BMI270 and ESP-IDF are historical choices superseded for this prototype. Rates, limits, timing targets, ports and the gameplay schema remain unchanged. The checks below validate the selected prototype; they do not reopen its IMU/runtime choice by default. LSM6DSV16X/32X remain later alternatives if measured constraints require another sensor.
+The [reference profile](../spec/reference-profile.json) retains this prototype selection in `webcam-pi3-doubles-v3` (originally recorded in `webcam-pi3-wireless-v2`). BMI270 and ESP-IDF are historical choices superseded for this prototype. The sensor selection does not change sampling rates or timing targets; the independent v0.3 match-contract revision is recorded in [ADR 0011](adr/0011-full-match-contract-and-state-stream.md). The checks below validate the selected prototype; they do not reopen its IMU/runtime choice by default. LSM6DSV16X/32X remain later alternatives if measured constraints require another sensor.
 
 ## Candidate comparison
 

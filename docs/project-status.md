@@ -4,7 +4,7 @@
 
 **Active stage: S0 — Shared baseline.**
 
-**Last evidence review: 2026-10-25.** The current request establishes orientation and staged delivery documentation. It does not release runtime implementation. No shared stage gate has yet been accepted. S0 remains open because the existing ball-only wire schema does not encode the selected full doubles game and the contract/resource checks are not complete.
+**Last evidence review: 2026-10-26.** The [technical S0 baseline](s0-baseline.md) now contains the proposed v0.3 full-match schema/profile, generated Python/C host-codec evidence, bounded-resource calculations, offline semantic fixtures and all five component reviews/S1 handoffs. No shared stage gate has yet been accepted. S0 remains open for human acceptance of this exact baseline and its versioned assumptions; S1 is not released. No device or gameplay runtime was added.
 
 This is the sole mutable stage ledger. Component guides link here rather than maintaining separate active-stage flags. Record the exact documentation revision read in each task. A pinned status snapshot supplied with an authorized task is acceptable for an isolated/offline checkout; a stale link or memory is not evidence of a later stage release.
 
@@ -12,7 +12,7 @@ This is the sole mutable stage ledger. Component guides link here rather than ma
 
 | Stage | State | Evidence / missing gate |
 | --- | --- | --- |
-| S0 | Active, incomplete | Orientation, workflow, specifications and existing offline checks available. Versioned complete-match schema/profile, codec/resource proof and cross-component acceptance still required. |
+| S0 | Active, incomplete | Technical evidence prepared: versioned full-match schema/profile, generated host-codec/size/resource checks and component reviews. Human adoption/acceptance remains pending. |
 | S1 | Not released | Needs accepted S0 and bounded local implementation tasks. |
 | S2 | Not released | Needs accepted S1 and actual device/transport feasibility evidence. |
 | S3 | Not released | Needs accepted S2; no live end-to-end path exists. |
@@ -25,12 +25,12 @@ This is the sole mutable stage ledger. Component guides link here rather than ma
 
 | Repository | Implemented artifacts | Next bounded S0 contribution |
 | --- | --- | --- |
-| documentation | Architecture/specification documents, proposed ball-only schema and reference profile, documentation checker, orientation/workflow | Specify and review the versioned complete-match contract; resolve blocking wire/trace decisions and define conformance fixtures/resource limits. |
-| motion-tennis-controller | Documentation and license; no firmware/build setup | Review controller-facing sample/result/control contracts, selected MPU-6050/Zephyr boundaries and the local acquisition acceptance checklist. |
-| motion-tennis-camera-tracking | Documentation and license; no capture/inference runtime | Review pose identity, timestamp/quality/calibration contract and recorded-input fixture requirements. |
-| motion-tennis-physics-engine | Documentation and license; no fusion/simulation service | Review complete-state query/commit semantics, ordering, periodic work, time maps and deterministic input/output fixture requirements. |
-| motion-tennis-game-engine | Documentation and license; no state service or renderer | Review full-match snapshot/atomic commit/publication and the producer/consumer contract with physics; define headless store cases. |
-| debug-units | Offline trace checker, synthetic fixture and nine unit tests, plus documentation | Review trace coverage and planned marker/clock/match fixtures. Existing checks do not implement the collector, viewer or new marker/clock semantics. |
+| documentation | Proposed v0.3 full-match schema/profile, generated host codecs, offline semantic oracle/fixtures, resource evidence, documentation/freshness checkers | Present [S0 evidence](s0-baseline.md), ADR 0011 and versioned assumptions for human acceptance. |
+| motion-tennis-controller | Documentation, contract review and S1 acquisition handoff; no firmware/build setup | Review supplied boundary/acceptance evidence; actual board/pins remain prerequisites for its S1 slice. |
+| motion-tennis-camera-tracking | Documentation, contract review and recorded-input S1 handoff; no capture/inference runtime | Review supplied pose identity, timestamp/quality/calibration and fixture acceptance cases. |
+| motion-tennis-physics-engine | Documentation, producer-side contract review and deterministic S1 core handoff; no runtime service | Review the complete-state, ordering, periodic work, rollback and state-stream contract evidence. |
+| motion-tennis-game-engine | Documentation, consumer-side contract review and headless S1 store handoff; no service or renderer | Review the full-match snapshot/atomic commit/publication and duplicate/recovery evidence. |
+| debug-units | Existing offline trace checker, synthetic fixture and nine tests; full-match trace specification, contract review and S1 handoff | Existing checks remain reproducible; implement the broader planned marker/map/match audit only after S1 release. |
 
 This table records evidence, not person assignments. Claim a task and its file scope through the existing human coordination channel or review system using the [task template](contribution-workflow.md#task-brief). Do not invent contributor names, deadlines or tickets.
 
@@ -39,11 +39,11 @@ This table records evidence, not person assignments. Claim a task and its file s
 **Checklist stage: S0.**
 
 - [x] A common stage sequence, local orientation/workflow and agent entry instructions exist in all six repositories.
-- [ ] Review the versioned roster/avatar/serve/score extension with both physics and game consumers and the diagnostic contract. Current `motion.proto` and `reference-profile.json` are not a completed doubles baseline.
-- [ ] Pin compatible schema/profile revisions and hashes, define fixtures and verify maximum encoded messages and resource bounds, including the eight-query batch and the complete match state. Resolve any size conflict explicitly through the contract process.
-- [ ] Resolve stage-blocking open decisions or record versioned assumptions and their later measurement gates; proposed numerical targets must stay visibly proposed.
-- [ ] Collect component contract reviews and define the first bounded S1 tasks, their dependencies and acceptance evidence.
-- [ ] Record human acceptance of S0 and release S1. This planning edit does not supply that acceptance.
+- [x] Specify and technically review the versioned roster/avatar/serve/score extension with physics/game producer and consumer boundaries and the diagnostic contract; v0.3 source and review findings are in the S0 baseline.
+- [x] Pin compatible schema/profile and validation-source hashes, define fixtures and verify generated host-codec maximum encodings and contract-storage bounds, including eight-query/full-match cases. ADR 0011 explicitly resolves the state-message size conflict.
+- [x] Record stage-blocking interface decisions as the proposed v0.3 baseline and versioned assumptions with later measurement gates; numerical performance targets remain proposed.
+- [x] Collect all five component technical reviews and define bounded first S1 tasks, dependencies and acceptance evidence.
+- [ ] Record human acceptance of the S0 baseline, ADR 0011 and documented assumptions; then release S1.
 
 ## Gate decision record
 

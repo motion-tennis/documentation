@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from render_progress import stale_outputs
+from check_contract_evidence import evidence_errors
 
 
 REPOSITORIES = (
@@ -413,6 +414,9 @@ class Checker:
                 self.check_link(path, line, target)
         self.required_content()
         self.reference_profile()
+        for error in evidence_errors(self.documentation):
+            self.error(self.documentation / "evidence/s0-contract-report.json", 1, error)
+        self.counts["contract evidence freshness checks"] += 1
         try:
             for path in stale_outputs(self.documentation):
                 self.error(path, 1, "Stale project progress view; run python3 scripts/render_progress.py")

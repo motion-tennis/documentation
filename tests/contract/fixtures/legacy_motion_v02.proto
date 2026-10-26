@@ -1,0 +1,240 @@
+syntax = "proto3";
+package motion.v02;
+
+// Proposed contract, not a runtime implementation. See docs/protocol.md.
+// UUID fields are exactly 16 bytes; hashes are exactly 32 bytes.
+// Live serialized Envelope size is at most 1200 bytes, without fragmentation.
+// Every uint64 is limited to 2^56 - 1 to bound varints to eight bytes.
+// Start a new applicable session before reaching that counter/timestamp limit.
+message Envelope {
+  uint32 major = 1;
+  uint32 minor = 2;
+  uint32 sender_id = 3;
+  bytes sender_session_id = 4;
+  uint64 message_seq = 5;
+  uint64 sent_time_us = 6;
+  uint32 clock_id = 7;
+  bytes run_id = 8;
+  oneof body {
+    ControllerInput controller_input = 20;
+    SkeletonFrame skeleton_frame = 21;
+    FrameStatus frame_status = 22;
+    BallStateRequest ball_state_request = 23;
+    BallStateResponse ball_state_response = 24;
+    StateUpdate state_update = 25;
+    StateCommitResult state_commit_result = 26;
+    FeedbackResult feedback_result = 27;
+    StatePublication state_publication = 28;
+    Hello hello = 40;
+    HelloResult hello_result = 41;
+    Association association = 42;
+    ClockExchange clock_exchange = 43;
+    ControlCommand control_command = 44;
+  }
+}
+
+message Transaction {
+  uint32 controller_id = 1;
+  bytes session_id = 2;
+  uint64 request_seq = 3;
+}
+message Vector3 { float x = 1; float y = 2; float z = 3; }
+message Quaternion { float x = 1; float y = 2; float z = 3; float w = 4; }
+enum TimeKind { TIME_UNKNOWN = 0; IRQ_MONOTONIC = 1; SENSOR_CAPTURE = 2; DRIVER_FRAME = 3; PRESENTATION = 4; }
+message SourceTime {
+  uint64 value_us = 1;
+  uint32 clock_id = 2;
+  TimeKind kind = 3;
+  uint32 uncertainty_us = 4;
+  bool timing_valid = 5;
+}
+message ControllerInput {
+  Transaction transaction = 1;
+  uint64 t0_us = 2;
+  uint64 sample_id = 3;
+  SourceTime capture = 4;
+  uint64 original_sensor_ticks = 5;
+  uint32 association_version = 6;
+  uint32 calibration_id = 7;
+  Vector3 specific_force_m_s2 = 8;
+  Vector3 angular_velocity_rad_s = 9;
+  bool sensor_saturated = 10;
+  uint32 battery_millivolts = 11;
+}
+enum TrackingState { TRACKING_UNSPECIFIED = 0; TRACKED = 1; INFERRED = 2; UNAVAILABLE = 3; }
+message Joint2D {
+  uint32 coco_joint_index = 1;
+  float x_normalized = 2;
+  float y_normalized = 3;
+  float score = 4;
+  TrackingState state = 5;
+}
+message SkeletonFrame {
+  uint64 frame_id = 1;
+  uint32 person_id = 2;
+  SourceTime capture = 3;
+  uint64 processing_complete_us = 4;
+  uint32 processing_clock_id = 5;
+  uint32 image_width = 6;
+  uint32 image_height = 7;
+  uint32 calibration_id = 8;
+  TrackingState state = 9;
+  repeated Joint2D joints = 10;
+  // One person per datagram. Coordinates refer to the original undistorted image.
+}
+message FrameStatus {
+  uint64 frame_id = 1;
+  repeated uint32 person_ids = 2;
+  uint64 frames_dropped_total = 3;
+  bool camera_ready = 4;
+}
+message QueryEntry { uint64 query_id = 1; Transaction transaction = 2; }
+message BallStateRequest {
+  bytes game_session_id = 1;
+  uint64 writer_epoch = 2;
+  uint64 batch_id = 3;
+  repeated QueryEntry queries = 4;
+  // Empty queries means periodic-only work, never an unidentified controller input.
+}
+message Ball {
+  Vector3 position_m = 1;
+  Vector3 velocity_m_s = 2;
+  float radius_m = 3;
+  uint32 calibration_id = 4;
+}
+message Snapshot {
+  bytes game_session_id = 1;
+  uint64 state_version = 2;
+  uint64 simulation_tick = 3;
+  uint32 tick_duration_us = 4;
+  Ball ball = 5;
+}
+enum QueryStatus { QUERY_UNSPECIFIED = 0; QUERY_OK = 1; QUERY_REJECTED = 2; }
+message BallStateResponse {
+  uint64 batch_id = 1;
+  repeated QueryEntry queries = 2;
+  QueryStatus status = 3;
+  Snapshot snapshot = 4;
+  string reason = 5;
+  uint64 writer_epoch = 6;
+}
+enum Outcome {
+  OUTCOME_UNSPECIFIED = 0;
+  HIT = 1;
+  MISS = 2;
+  INVALID_INPUT = 3;
+  TRACKING_UNAVAILABLE = 4;
+  STALE_INPUT = 5;
+  STATE_CONFLICT = 6;
+  TIMEOUT = 7;
+  OVERLOADED = 8;
+  INTERNAL_ERROR = 9;
+}
+enum CueKind { CUE_NONE = 0; CUE_HIT = 1; CUE_MISS = 2; CUE_FAULT = 3; }
+message Cue {
+  CueKind kind = 1;
+  uint64 cue_id = 2;
+  float intensity = 3;
+  uint32 duration_ms = 4;
+  bool electrical_eligible = 5;
+}
+message Decision {
+  Transaction transaction = 1;
+  uint64 current_sample_id = 2;
+  uint64 pose_frame_id = 3;
+  uint32 person_id = 4;
+  uint32 association_version = 5;
+  uint64 imu_capture_us = 6;
+  uint64 pose_capture_us = 7;
+  Outcome outcome = 8;
+  uint32 event_index = 9;
+  uint64 swing_id = 10;
+  Cue cue = 11;
+  // Full source clocks, historical sample IDs and uncertainty remain in the trace.
+}
+message StateUpdate {
+  bytes game_session_id = 1;
+  uint64 writer_epoch = 2;
+  uint64 batch_id = 3;
+  uint64 base_state_version = 4;
+  uint64 target_simulation_tick = 5;
+  Ball ball = 6;
+  bytes tracking_session_id = 7;
+  repeated Decision decisions = 8;
+  // The whole ordered list and final ball state commit atomically.
+}
+enum CommitStatus { COMMIT_UNSPECIFIED = 0; ACCEPTED = 1; CONFLICT = 2; INVALID = 3; WRONG_SESSION = 4; WRONG_WRITER = 5; UNKNOWN_BATCH = 6; }
+message StateCommitResult {
+  bytes game_session_id = 1;
+  uint64 writer_epoch = 2;
+  uint64 batch_id = 3;
+  CommitStatus status = 4;
+  uint64 state_version = 5;
+  uint64 simulation_tick = 6;
+  string reason = 7;
+}
+message FeedbackResult {
+  Transaction transaction = 1;
+  Outcome outcome = 2;
+  bool committed = 3;
+  bytes game_session_id = 4;
+  uint64 writer_epoch = 5;
+  uint64 batch_id = 6;
+  uint32 event_index = 7;
+  uint64 state_version = 8;
+  uint64 simulation_tick = 9;
+  Cue cue = 10;
+  string reason = 11;
+}
+message StatePublication {
+  Snapshot snapshot = 1;
+  uint64 writer_epoch = 2;
+  uint64 batch_id = 3;
+  repeated Decision decisions = 4;
+}
+
+// Control plane: same envelope, four-byte big-endian length framing on TCP.
+message Hello {
+  string role = 1;
+  bytes profile_sha256 = 2;
+  bytes schema_sha256 = 3;
+  uint32 receive_udp_port = 4;
+}
+message HelloResult {
+  bool accepted = 1;
+  string reason = 2;
+  bytes game_session_id = 3;
+  uint64 writer_epoch = 4;
+}
+message Association {
+  Transaction controller = 1;
+  bytes tracking_session_id = 2;
+  uint32 person_id = 3;
+  uint32 association_version = 4;
+  uint32 calibration_id = 5;
+  uint32 player_slot = 6;
+  bool right_hand = 7;
+  uint64 command_id = 8;
+  bool response = 9;
+  bool accepted = 10;
+  string reason = 11;
+}
+message ClockExchange {
+  uint64 exchange_id = 1;
+  uint64 source_send_us = 2;
+  uint64 receiver_receive_us = 3;
+  uint64 receiver_send_us = 4;
+  bool response = 5;
+  // The initiator records the fourth timestamp locally on full response receipt.
+}
+message ControlCommand {
+  uint64 command_id = 1;
+  string operation = 2;
+  bytes game_session_id = 3;
+  uint64 writer_epoch = 4;
+  uint64 batch_id = 5;
+  bytes configuration_json_utf8 = 6;
+  bool response = 7;
+  bool accepted = 8;
+  string reason = 9;
+}

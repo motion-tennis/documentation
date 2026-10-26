@@ -1,0 +1,670 @@
+{
+  "allocation_model": {
+    "dedup_record_bytes": 4824,
+    "dedup_record_formula": "sizeof(BallStateRequest)+sizeof(BallStateResponse)+sizeof(StateUpdate)+sizeof(StateCommitResult)+64",
+    "largest_encoded_envelope_bytes": 4379,
+    "limitations": [
+      "Host ABI sizeof evidence; ESP32, Pi and Windows ABIs are not measured.",
+      "Payload, bounded framing and declared bookkeeping only; no firmware, OS, network-stack, heap, code or call-stack sizing.",
+      "Allocation of a control frame is capped by the maximum known bounded Envelope; the outer 65536-byte transport ceiling is not an allocation instruction.",
+      "Capture image/inference buffers and runtime logging are outside this contract-storage model."
+    ],
+    "models": {
+      "controller_contract_storage": {
+        "budget_bytes": 65536,
+        "components_bytes": {
+          "bounded_raw_envelopes": 8758,
+          "decoded_envelopes": 8752,
+          "pending_bookkeeping": 1024,
+          "pending_input_and_result_payloads": 6912
+        },
+        "total_bytes": 25446,
+        "within_budget": true
+      },
+      "game_contract_storage": {
+        "budget_bytes": 8388608,
+        "components_bytes": {
+          "bounded_raw_envelopes": 8758,
+          "committed_and_candidate_snapshots": 1648,
+          "decoded_envelopes": 8752,
+          "dedup_payloads": 2469888,
+          "setup": 576,
+          "state_framing": 32784
+        },
+        "total_bytes": 2522406,
+        "within_budget": true
+      },
+      "physics_contract_storage": {
+        "budget_bytes": 8388608,
+        "components_bytes": {
+          "batch_scratch": 6856,
+          "bounded_raw_envelopes": 8758,
+          "decoded_envelopes": 8752,
+          "dedup_payloads": 2469888,
+          "imu_history": 147456,
+          "input_queue": 2304,
+          "pose_history": 13312,
+          "state_framing": 32784
+        },
+        "total_bytes": 2690110,
+        "within_budget": true
+      }
+    },
+    "pending_bookkeeping_allowance_bytes_per_entry": 64
+  },
+  "environment": {
+    "compiler": "gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+    "dependencies": {
+      "grpcio": "1.85.0",
+      "grpcio-tools": "1.78.0",
+      "nanopb": "0.4.9.1",
+      "nanopb_c_archive_sha256": "4575944a468718ef25f05eb01d994364650b581563089a9841986bb1e460eac3",
+      "protobuf": "6.33.5",
+      "setuptools": "84.2.1",
+      "typing_extensions": "4.16.0"
+    },
+    "machine": "x86_64",
+    "protoc": "libprotoc 31.1",
+    "python": "3.14.8",
+    "system": "Linux"
+  },
+  "generated_c_compile_flags": [
+    "-std=c11",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-DPB_FIELD_32BIT",
+    "-DPB_VALIDATE_UTF8"
+  ],
+  "generated_c_struct_bytes": {
+    "Association": 224,
+    "AvatarState": 64,
+    "Ball": 40,
+    "BallStateRequest": 432,
+    "BallStateResponse": 1400,
+    "ClockExchange": 40,
+    "CompletedSet": 32,
+    "ControlCommand": 4296,
+    "ControllerInput": 144,
+    "Cue": 32,
+    "Decision": 136,
+    "Envelope": 4376,
+    "FeedbackResult": 288,
+    "FrameStatus": 48,
+    "Hello": 96,
+    "HelloResult": 160,
+    "Joint2D": 20,
+    "MatchConfiguration": 368,
+    "MatchRules": 64,
+    "MatchSetup": 576,
+    "MatchState": 776,
+    "PlayerBinding": 72,
+    "Quaternion": 16,
+    "QueryEntry": 48,
+    "RallyState": 56,
+    "RuleEvent": 48,
+    "ScoreState": 216,
+    "ServeState": 80,
+    "SkeletonFrame": 416,
+    "Snapshot": 824,
+    "SourceTime": 24,
+    "StateCommitResult": 200,
+    "StatePublication": 2720,
+    "StateUpdate": 2728,
+    "Transaction": 32,
+    "Vector3": 12
+  },
+  "harness_only_static_raw_buffers_bytes": 131072,
+  "legacy_v02": {
+    "baseline_revision": "95c2592",
+    "measurements": {
+      "state_publication": {
+        "exceeds_legacy_udp_cap": true,
+        "structural_bound_bytes": 1215
+      },
+      "state_update": {
+        "exceeds_legacy_udp_cap": true,
+        "structural_bound_bytes": 1225
+      }
+    },
+    "qualification": "Conservative structural bounds only. These do not prove a semantically admitted legacy message exceeded the UDP cap."
+  },
+  "limitations": [
+    "Host Linux Python/C interoperability only; ESP32/Pi/Windows runtime and compiler checks remain later stages.",
+    "No timing, WLAN, hardware, tracking accuracy or complete tennis-rule proof.",
+    "S0 acceptance remains a separate recorded human decision."
+  ],
+  "maximum_encoded_messages": {
+    "association": {
+      "encoded_bytes": 305,
+      "margin_bytes": 65231,
+      "transport": "control_tcp",
+      "transport_limit_bytes": 65536
+    },
+    "ball_state_request": {
+      "encoded_bytes": 486,
+      "margin_bytes": 7706,
+      "transport": "state_tcp",
+      "transport_limit_bytes": 8192
+    },
+    "ball_state_response": {
+      "encoded_bytes": 1465,
+      "margin_bytes": 6727,
+      "transport": "state_tcp",
+      "transport_limit_bytes": 8192
+    },
+    "clock_exchange": {
+      "encoded_bytes": 119,
+      "margin_bytes": 65417,
+      "transport": "control_tcp",
+      "transport_limit_bytes": 65536
+    },
+    "control_command": {
+      "encoded_bytes": 4379,
+      "margin_bytes": 61157,
+      "transport": "control_tcp",
+      "transport_limit_bytes": 65536
+    },
+    "controller_input": {
+      "encoded_bytes": 225,
+      "margin_bytes": 975,
+      "transport": "udp",
+      "transport_limit_bytes": 1200
+    },
+    "feedback_result": {
+      "encoded_bytes": 338,
+      "margin_bytes": 862,
+      "transport": "udp",
+      "transport_limit_bytes": 1200
+    },
+    "frame_status": {
+      "encoded_bytes": 123,
+      "margin_bytes": 1077,
+      "transport": "udp",
+      "transport_limit_bytes": 1200
+    },
+    "hello": {
+      "encoded_bytes": 173,
+      "margin_bytes": 8019,
+      "transport": "state_tcp/control_tcp",
+      "transport_limit_bytes": 8192
+    },
+    "hello_result": {
+      "encoded_bytes": 242,
+      "margin_bytes": 7950,
+      "transport": "state_tcp/control_tcp",
+      "transport_limit_bytes": 8192
+    },
+    "match_setup": {
+      "encoded_bytes": 704,
+      "margin_bytes": 64832,
+      "transport": "control_tcp",
+      "transport_limit_bytes": 65536
+    },
+    "skeleton_frame": {
+      "encoded_bytes": 584,
+      "margin_bytes": 616,
+      "transport": "udp",
+      "transport_limit_bytes": 1200
+    },
+    "state_commit_result": {
+      "encoded_bytes": 269,
+      "margin_bytes": 7923,
+      "transport": "state_tcp",
+      "transport_limit_bytes": 8192
+    },
+    "state_publication": {
+      "encoded_bytes": 2770,
+      "margin_bytes": 5422,
+      "transport": "publication_tcp",
+      "transport_limit_bytes": 8192
+    },
+    "state_update": {
+      "encoded_bytes": 2779,
+      "margin_bytes": 5413,
+      "transport": "state_tcp",
+      "transport_limit_bytes": 8192
+    }
+  },
+  "maximum_method": "Conservative structural upper bounds: all optional fields present, each repeated/byte/string field at its bound, uint64 at 2^56-1, uint32 at 2^32-1, largest declared enum. These witnesses are not valid gameplay states; every admitted state is no larger.",
+  "negative_and_envelope_checks": [
+    {
+      "name": "overflow_SkeletonFrame.joints",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_SkeletonFrame.joints",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_FrameStatus.person_ids",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_FrameStatus.person_ids",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_BallStateRequest.queries",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_BallStateRequest.queries",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_BallStateResponse.queries",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_BallStateResponse.queries",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_StateUpdate.decisions",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_StateUpdate.decisions",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_StatePublication.decisions",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_StatePublication.decisions",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_StateUpdate.rule_events",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_StateUpdate.rule_events",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_StatePublication.rule_events",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_StatePublication.rule_events",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_MatchConfiguration.players",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_MatchConfiguration.players",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_MatchState.avatars",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_MatchState.avatars",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_ServeState.service_order",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_ServeState.service_order",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_ServeState.receiving_order",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_ServeState.receiving_order",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_ScoreState.completed_sets",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_ScoreState.completed_sets",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_uuid",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_uuid",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_sha256",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_sha256",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_reason_utf8",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_reason_utf8",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_role",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_role",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_operation",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_operation",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "overflow_configuration",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "field_bound_configuration",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "controller_sender_session_mismatch",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "controller_sender_id_mismatch",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "missing_controller_capture",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "duplicate_coco_joint",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "out_of_frame_tracked_joint",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "unspecified_joint_state",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "duplicate_frame_person",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "uint64_profile_overflow",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "nan_physical_value",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "infinite_physical_value",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "unknown_enum",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "embedded_nul_string",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "embedded_nul_wire_string",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "legacy_protocol_version",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "short_envelope_uuid",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "wrong_message_transport",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "unknown_wire_field",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "unknown_wire_field",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "duplicate_wire_field",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "missing_body",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "missing_sender_identity",
+      "rejected_by": "contract_field_validator"
+    },
+    {
+      "name": "truncated_protobuf",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "unterminated_varint",
+      "rejected_by": "bounded_nanopb_harness"
+    },
+    {
+      "name": "invalid_utf8_role",
+      "rejected_by": "bounded_nanopb_harness"
+    }
+  ],
+  "profile_sha256": "a3533462fdebfd4c7c2f87eaa3bd579d3056170e3dcfc6a6c68ed34474c1d969",
+  "roundtrips": [
+    {
+      "bytes": 225,
+      "name": "structural_maximum_controller_input",
+      "python_c_equal": true,
+      "sha256": "2e0ac3f20dec79a644833972c712cf1008781123cd9dfcc2bb925f4c03a7bb24"
+    },
+    {
+      "bytes": 584,
+      "name": "structural_maximum_skeleton_frame",
+      "python_c_equal": true,
+      "sha256": "1f74641c7e9407f004a0971d071d7b060187180cfa497c7663d77f918f4c7d94"
+    },
+    {
+      "bytes": 123,
+      "name": "structural_maximum_frame_status",
+      "python_c_equal": true,
+      "sha256": "c1e4fc1fbaf88643e244ae43eeb3d016aa7a7dc2542ea5ba19c84702aaa7d0bc"
+    },
+    {
+      "bytes": 486,
+      "name": "structural_maximum_ball_state_request",
+      "python_c_equal": true,
+      "sha256": "8fcf6cb76b62f5ecbcdf2130de04dec329a339e71bb2a974db48a015e6180c2e"
+    },
+    {
+      "bytes": 1465,
+      "name": "structural_maximum_ball_state_response",
+      "python_c_equal": true,
+      "sha256": "74840b9d8bfa7c1c347dc1777f387f9598777d2a11d74f8c0b428982de0bacae"
+    },
+    {
+      "bytes": 2779,
+      "name": "structural_maximum_state_update",
+      "python_c_equal": true,
+      "sha256": "51ab369f3ae1c5002ab159988894c9e6707115016acf68dfa3d672a1975a7cb3"
+    },
+    {
+      "bytes": 269,
+      "name": "structural_maximum_state_commit_result",
+      "python_c_equal": true,
+      "sha256": "b60faf7befc7e3aa4f32d749d19578fd5aaa4c334110422a3a6b785cf6de2c37"
+    },
+    {
+      "bytes": 338,
+      "name": "structural_maximum_feedback_result",
+      "python_c_equal": true,
+      "sha256": "4b404ef5fd976ba52b4cb35dd319ff835978b9a03bf628f9796be2889f946a26"
+    },
+    {
+      "bytes": 2770,
+      "name": "structural_maximum_state_publication",
+      "python_c_equal": true,
+      "sha256": "37aad6e2480dd4ec2c231265ab13645b509c9949fbf62470123dc7a2e0437be4"
+    },
+    {
+      "bytes": 173,
+      "name": "structural_maximum_hello",
+      "python_c_equal": true,
+      "sha256": "4a6c5123d2089aeacb8eff93d158726d245c7385032aa0bb89124322a0161665"
+    },
+    {
+      "bytes": 242,
+      "name": "structural_maximum_hello_result",
+      "python_c_equal": true,
+      "sha256": "e68ef088809715d14c7ebc90adafc353a305942bf29938f1676e640c95868b18"
+    },
+    {
+      "bytes": 305,
+      "name": "structural_maximum_association",
+      "python_c_equal": true,
+      "sha256": "4ccc012a2f27d88701e68f71051542a2485049eb588d0a5b2612be605eaaeeb8"
+    },
+    {
+      "bytes": 119,
+      "name": "structural_maximum_clock_exchange",
+      "python_c_equal": true,
+      "sha256": "59d79d5d8a09522af76fe12e4c4805d748b75743c1197465bf69d64b5772ade4"
+    },
+    {
+      "bytes": 4379,
+      "name": "structural_maximum_control_command",
+      "python_c_equal": true,
+      "sha256": "6edbcef8950174906d6b127cad2cea89d70532a6a84596a47816914710502733"
+    },
+    {
+      "bytes": 704,
+      "name": "structural_maximum_match_setup",
+      "python_c_equal": true,
+      "sha256": "6adbb79d6172492268fa88edb850f54ed75600901985b0666f087cb022f9c657"
+    },
+    {
+      "bytes": 114,
+      "name": "controller_regular_sample",
+      "python_c_equal": true,
+      "sha256": "98aa0b376712a1faecbfab830f77123891b574bcc7aad540c69c9a3f3dde563a"
+    },
+    {
+      "bytes": 439,
+      "name": "seventeen_joint_pose",
+      "python_c_equal": true,
+      "sha256": "10a7cd1d81743e04bbe944e8389d6e9b870b0a8d7a396aa4897774c8cb05e3d3"
+    },
+    {
+      "bytes": 121,
+      "name": "maximum_legal_uint64",
+      "python_c_equal": true,
+      "sha256": "348716af3c943247e11eafcb594ac69aea519ebe5ce8249c7c5a3fc0f67a9aa4"
+    },
+    {
+      "bytes": 385,
+      "name": "full_match_setup",
+      "python_c_equal": true,
+      "sha256": "b9dc790fe42e92523710ea9c0976a9ba6b36f7953e10e75aeb943c590799e7a0"
+    },
+    {
+      "bytes": 298,
+      "name": "eight_query_request",
+      "python_c_equal": true,
+      "sha256": "d822f83f1e1183ddd2a680132d84a509cfed7f9bffbb2b2aadae66225db217c5"
+    },
+    {
+      "bytes": 751,
+      "name": "eight_decision_update",
+      "python_c_equal": true,
+      "sha256": "bddca1691909826c51a2ee945beec879a09d43f265e7fb51f1d0c2aea9b3f92d"
+    },
+    {
+      "bytes": 73,
+      "name": "periodic_only_query",
+      "python_c_equal": true,
+      "sha256": "6355bec6d16ec128824738b6cc4bfccc33d9e74ccef7f9b91aaf97e70ba64f54"
+    },
+    {
+      "bytes": 361,
+      "name": "periodic_only_update",
+      "python_c_equal": true,
+      "sha256": "6c4d98ed9160808067cd4ede42e27123b533ae18b6df9319089efb08d415eafd"
+    },
+    {
+      "bytes": 593,
+      "name": "full_snapshot_response",
+      "python_c_equal": true,
+      "sha256": "f35bde3d14cc738c1b1579258147497faa16b4c5f04d877f73aa021447854135"
+    },
+    {
+      "bytes": 437,
+      "name": "high_width_valid_setup",
+      "python_c_equal": true,
+      "sha256": "6afa0875f312cceda8c4ecb8fa54be74c5284068e47819f2682e78247dfcaa7f"
+    },
+    {
+      "bytes": 449,
+      "name": "high_width_valid_eight_query_request",
+      "python_c_equal": true,
+      "sha256": "8748672fe50acf22fbafbf84bcb6bf6e783d78f3ea8a227e5569b4f3c0baae12"
+    },
+    {
+      "bytes": 1434,
+      "name": "high_width_valid_eight_decision_update",
+      "python_c_equal": true,
+      "sha256": "5f87be5807793e58b12f5f0b3bca742e10765af5f92ba5fc6dc56ac4145996a4"
+    }
+  ],
+  "schema_sha256": "b6728e240316e957f5c5addb973f12f9a57fffbcdacc4331f3db5e06895f360b",
+  "scope": "Generated-codec and contract-fixture proof; no runtime or hardware implementation",
+  "semantic_checks": {
+    "status": "passed",
+    "tests": 32
+  },
+  "source_sha256": {
+    "scripts/contract/README.md": "dc5ae53a9ab642e8610899ee75874cd2a621f953dc5036e028645f6d07ac1c0e",
+    "scripts/contract/check_contract.py": "308fa79e54ab71e8fd494723deb11f08500ab166f86c607c5dd0463e4b5044c3",
+    "scripts/contract/codec_harness.c": "fb26b1fe20d81b9a50f7026c5a1f2f635dbc5db8e5a23c43ff02c102d82eb938",
+    "scripts/contract/fetch_nanopb.py": "8ebeaac712869c26f98b39fd2b4a7509277ac489242675822ed33275a7deadb4",
+    "scripts/contract/motion.options": "6858df01d49dbff9a628d7102807e7ef987963b03b46e0f42363317808e8f812",
+    "scripts/contract/nanopb-source.lock.json": "1bcacfc61cf28862eae368a9e7449ff720a4ecc9eaf8ce1edc7a18caff390ab7",
+    "scripts/contract/requirements.txt": "1960d8666dc6047ea4dfb6ebc66c4a617fea88f6f8ecda4b311c3351793c1d53",
+    "scripts/contract/wire_bounds.py": "82799d4a6c48ed87d02154e6fc5ed4c476454c3416e43942660d41f76ac4a434",
+    "scripts/match_contract.py": "afa2b3073a8593cab557240f8629f452782371d1ead1f146b0396f99dedbe034",
+    "spec/motion.proto": "b6728e240316e957f5c5addb973f12f9a57fffbcdacc4331f3db5e06895f360b",
+    "spec/reference-profile.json": "a3533462fdebfd4c7c2f87eaa3bd579d3056170e3dcfc6a6c68ed34474c1d969",
+    "tests/contract/fixtures/legacy_motion_v02.proto": "775b26b5d1f1e00f9ccb68fc77612c80d78ae0fd18024b27d0e1a096bca5b850",
+    "tests/contract/test_generated.py": "0b842cc58e8ef9cdbf2b2f87dffab4ed416c21c3b8a00e8a84fe4a735bbd7e8f",
+    "tests/match/fixtures.py": "b76552c72fdcd07a01791a4b01a16c8d5b5c622b736df04dacb4f36248c0a6c2",
+    "tests/match/test_match_contract.py": "f8687884766b5fa535c8bd0253a1762afeaaa2bb68e607a896741bf498538f7a"
+  },
+  "status": "passed_offline_contract_checks"
+}

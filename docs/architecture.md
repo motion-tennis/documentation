@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Master plan](master-plan.md) · [Protocol](protocol.md) · [Consistency](physics.md)
 
-**Confirmed direction:** four wireless battery controllers, available Pi 3 Model B, Windows RTX 5080 laptop, webcam-first 2.5D play. **Proposed:** the detailed reference stack, batching, UDP/Protobuf and state-commit protocol. **Implemented:** documentation and offline debug tooling only.
+**Confirmed direction:** four wireless battery controllers, available Pi 3 Model B, Windows RTX 5080 laptop, webcam-first 2.5D play. **Proposed:** the detailed reference stack, batching, UDP/Protobuf and state-commit protocol. **Implemented:** documentation, offline debug tooling and host contract-validation tools only.
 
 ## Physical deployment
 
@@ -10,7 +10,7 @@ Device boxes and software nodes are distinct. Webcam video stays on the laptop. 
 
 The Pi also owns the shared monotonic time reference and versioned offset/drift mappings for the ESP32 and laptop clock domains. Raw local clocks continue unchanged. Runtime freshness checks and the debug timeline use the same mapping versions; the viewer exposes their uncertainty and validity. Clock exchanges use the existing control path, and mapping export is asynchronous. See the agreed [clock design](coordinates-and-time.md#pi-reference-clock-mapping); implementation and accuracy remain unverified.
 
-The agreed [2v2 doubles mode](gameplay.md) adds automatic avatar movement, overhead gesture serving, normal scoring and two elevated views behind the respective teams. Physical camera stations identify people and calibrate body-relative gestures; they are not avatar court positions. The Pi calculates the full match, the laptop stores one committed state, and both cameras display it. The [roster/serve/score/avatar contract extension](protocol.md#doubles-match-contract-extension) must precede implementation because current schema fields cover only the earlier ball-state proposal.
+The agreed [2v2 doubles mode](gameplay.md) adds automatic avatar movement, overhead gesture serving, normal scoring and two elevated views behind the respective teams. Physical camera stations identify people and calibrate body-relative gestures; they are not avatar court positions. The Pi calculates the full match, the laptop stores one committed state, and both cameras display it. The [roster/serve/score/avatar contract extension](protocol.md#doubles-match-contract-extension) is specified in v0.3 and checked with generated host codecs; target implementations and a running match remain later work.
 
 ```mermaid
 flowchart LR
@@ -67,7 +67,7 @@ flowchart LR
     G -.->|"State and render trace"| D
 ```
 
-Live envelopes use UDP/Protobuf; setup/administration and local renderer state subscription use framed TCP. Telemetry has separate queues. Both required ball-state arrows remain visible even though up to eight logical queries share a datagram.
+Controller/pose envelopes use bounded UDP/Protobuf. Required Pi/PC queries and atomic commits use a dedicated bounded TCP state stream; setup/administration and local renderer state subscription also use framed TCP. Telemetry has separate queues. Both required ball-state arrows remain visible even though up to eight logical queries share one framed message. See [ADR 0011](adr/0011-full-match-contract-and-state-stream.md).
 
 ## Complete controller transaction
 

@@ -10,7 +10,7 @@
 
 ## Match-state contract gap
 
-The current proposed `motion.proto` snapshot carries ball state and transaction/event metadata, not a complete match roster, avatar state, serve state or scoreboard. The agreed game therefore requires a reviewed, versioned contract extension before a running doubles match can be claimed. It must define bounded roster/team-slot associations, authoritative avatar positions/motion, current court ends, server/receiver and toss/serve phase, point/game/set/tiebreak score and ordered rule events alongside the ball state. Exact fields and message-size proof remain implementation work; this documentation does not change the schema.
+The proposed v0.3 `motion.proto` snapshot carries the complete ball/avatar/serve/rally/score state, configuration references and ordered rule events. [S0 contract evidence](s0-baseline.md) covers generated host codecs, size/resource bounds and offline acceptance/rejection fixtures. A running service, target-platform codecs and gameplay behavior are not implemented. The required query/commit path uses the dedicated bounded TCP state stream described in [protocol](protocol.md).
 
 Physics on the Pi calculates the ball, automatic avatar movement, serve transitions and score changes as one ordered candidate match state. The Windows state service validates and atomically stores the entire accepted match snapshot and events, then publishes that same version to the renderer. It does not run another scorer, independent avatar AI or separate ball integrator. The mandatory ball-state query/response stays in the processing path; its future match-version context must cover all state needed for a consistent decision.
 

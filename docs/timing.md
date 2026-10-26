@@ -55,7 +55,7 @@ sequenceDiagram
     Note over O: Vibration onset and emitted light are separate physical events
 ```
 
-The diagram shows an accepted batch member. Invalid inputs/tracking can terminate earlier with a correlated failure. Missing delivery terminates locally at the response cutoff, with a counted timeout. Neither becomes an ordinary miss. The per-transaction query identity remains explicit even when several queries share a datagram and ball snapshot.
+The diagram shows an accepted batch member. Invalid inputs/tracking can terminate earlier with a correlated failure. Missing delivery terminates locally at the response cutoff, with a counted timeout. Neither becomes an ordinary miss. The per-transaction query identity remains explicit even when several queries share a framed state message and match snapshot.
 
 ## Reference timing requirements
 

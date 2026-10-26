@@ -4,7 +4,7 @@
 
 **User-confirmed hardware:** Raspberry Pi 3 Model B. **Proposed implementation:** C++20/CMake, 64-bit Raspberry Pi OS Lite, bounded native data structures and nonblocking sockets. No runtime implementation or performance test exists. Do not run camera inference or rendering on this Pi.
 
-**Agreed gameplay:** [two-versus-two doubles](gameplay.md), automatic avatar court movement, overhead gesture serving and ordinary tennis scoring. The Pi calculates avatar movement, ball contacts, serve/rally transitions and score changes; the Windows service commits the resulting match snapshot. This expands the earlier ball-only design. The current schema does not yet encode the complete match; the [versioned contract extension](protocol.md#doubles-match-contract-extension) is an implementation prerequisite.
+**Agreed gameplay:** [two-versus-two doubles](gameplay.md), automatic avatar court movement, overhead gesture serving and ordinary tennis scoring. The Pi calculates avatar movement, ball contacts, serve/rally transitions and score changes; the Windows service commits the resulting match snapshot. This expands the earlier ball-only design. The v0.3 [full-match contract](protocol.md#doubles-match-contract-extension) now encodes that state with host codec/semantic fixtures. Runtime fusion, rules and target-platform validation remain later work.
 
 ## Process and thread responsibilities
 
@@ -42,7 +42,7 @@ The scene is one shared doubles court with four persistent avatars, two per team
 
 ## Ownership and invariants
 
-The Windows game state service stores the single committed snapshot. Physics is the sole writer/calculator and receives a fenced `writer_epoch`. In the planned extended contract, one snapshot covers ball, avatar roots/movement state, roster revision, serve/rally phase and score. A snapshot is `(game_session_id, state_version)`; `simulation_tick` is separate logical time. Only the game increments committed version. Rendering interpolation and camera transforms cannot change it; the PC does not run a second scorer or avatar movement authority. Until the contract extension is specified and validated, current ball-only messages cannot represent this full state.
+The Windows game state service stores the single committed snapshot. Physics is the sole writer/calculator and receives a fenced `writer_epoch`. In the proposed v0.3 contract, one snapshot covers ball, avatar roots/movement state, roster revision, serve/rally phase and score. A snapshot is `(game_session_id, state_version)`; `simulation_tick` is separate logical time. Only the game increments committed version. Rendering interpolation and camera transforms cannot change it; the PC does not run a second scorer or avatar movement authority. Generated host fixtures validate this full-state representation; runtime state storage and rules remain later implementation work.
 
 An accepted batch changes version once even if it contains eight controller decisions. Events are identified by `(game_session_id, writer_epoch, batch_id, event_index)`. Candidate states between decisions in a batch are derived states, not separately committed revisions. Old sessions/epochs cannot write after restart or replacement.
 

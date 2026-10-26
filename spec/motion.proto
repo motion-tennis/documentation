@@ -1,9 +1,10 @@
 syntax = "proto3";
-package motion.v02;
+package motion.v03;
 
 // Proposed contract, not a runtime implementation. See docs/protocol.md.
 // UUID fields are exactly 16 bytes; hashes are exactly 32 bytes.
-// Live serialized Envelope size is at most 1200 bytes, without fragmentation.
+// Controller/pose UDP envelopes are at most 1200 bytes, without fragmentation.
+// Pi/PC state and publication envelopes use bounded 8192-byte TCP frames.
 // Every uint64 is limited to 2^56 - 1 to bound varints to eight bytes.
 // Start a new applicable session before reaching that counter/timestamp limit.
 message Envelope {
@@ -30,6 +31,7 @@ message Envelope {
     Association association = 42;
     ClockExchange clock_exchange = 43;
     ControlCommand control_command = 44;
+    MatchSetup match_setup = 45;
   }
 }
 
@@ -107,7 +109,9 @@ message Snapshot {
   uint64 state_version = 2;
   uint64 simulation_tick = 3;
   uint32 tick_duration_us = 4;
-  Ball ball = 5;
+  reserved 5;
+  reserved "ball";
+  MatchState match = 6;
 }
 enum QueryStatus { QUERY_UNSPECIFIED = 0; QUERY_OK = 1; QUERY_REJECTED = 2; }
 message BallStateResponse {
@@ -117,6 +121,7 @@ message BallStateResponse {
   Snapshot snapshot = 4;
   string reason = 5;
   uint64 writer_epoch = 6;
+  bytes game_session_id = 7;
 }
 enum Outcome {
   OUTCOME_UNSPECIFIED = 0;
@@ -158,10 +163,13 @@ message StateUpdate {
   uint64 batch_id = 3;
   uint64 base_state_version = 4;
   uint64 target_simulation_tick = 5;
-  Ball ball = 6;
+  reserved 6;
+  reserved "ball";
   bytes tracking_session_id = 7;
   repeated Decision decisions = 8;
-  // The whole ordered list and final ball state commit atomically.
+  MatchState match = 9;
+  repeated RuleEvent rule_events = 10;
+  // The entire match, ordered decisions and rule events commit atomically.
 }
 enum CommitStatus { COMMIT_UNSPECIFIED = 0; ACCEPTED = 1; CONFLICT = 2; INVALID = 3; WRONG_SESSION = 4; WRONG_WRITER = 5; UNKNOWN_BATCH = 6; }
 message StateCommitResult {
@@ -191,6 +199,159 @@ message StatePublication {
   uint64 writer_epoch = 2;
   uint64 batch_id = 3;
   repeated Decision decisions = 4;
+  repeated RuleEvent rule_events = 5;
+}
+
+// v0.3 full-match contract. All collections have static codec bounds.
+// Slots 1/2 are team A; slots 3/4 are team B, independent of court ends.
+enum Team { TEAM_NONE = 0; TEAM_A = 1; TEAM_B = 2; }
+enum MatchPhase { MATCH_UNSPECIFIED = 0; MATCH_READY = 1; MATCH_PLAYING = 2; MATCH_PAUSED = 3; MATCH_FINISHED = 4; }
+enum MovementMode { MOVEMENT_UNSPECIFIED = 0; HOLDING = 1; SERVING = 2; RECEIVING = 3; COVERING = 4; INTERCEPTING = 5; }
+enum ServePhase { SERVE_UNSPECIFIED = 0; SERVE_READY = 1; SERVE_LIFT = 2; SERVE_TOSS = 3; SERVE_CONTACT = 4; SERVE_IN_FLIGHT = 5; SERVE_RALLY = 6; SERVE_FAULT = 7; SERVE_LET = 8; SERVE_INTERRUPTED = 9; }
+enum ServiceSide { SERVICE_UNSPECIFIED = 0; DEUCE_SIDE = 1; AD_SIDE = 2; }
+enum PointScore { LOVE = 0; FIFTEEN = 1; THIRTY = 2; FORTY = 3; ADVANTAGE = 4; }
+message PlayerBinding {
+  uint32 player_slot = 1;
+  uint32 controller_id = 2;
+  bytes controller_session_id = 3;
+  bytes tracking_session_id = 4;
+  uint32 person_id = 5;
+  uint32 avatar_id = 6;
+  uint32 association_version = 7;
+  uint32 calibration_id = 8;
+  bool right_hand = 9;
+  uint32 physical_station_id = 10;
+}
+message MatchRules {
+  uint32 sets_to_win = 1;
+  uint32 games_to_win_set = 2;
+  uint32 minimum_game_lead = 3;
+  uint32 tiebreak_at_games = 4;
+  uint32 tiebreak_points_to_win = 5;
+  uint32 tiebreak_minimum_lead = 6;
+  bool final_set_tiebreak = 7;
+  bytes tuning_sha256 = 8;
+  // Hash identifies immutable calibration/movement/gesture parameters.
+}
+message MatchConfiguration {
+  uint32 roster_revision = 1;
+  uint32 rules_revision = 2;
+  repeated PlayerBinding players = 3;
+  MatchRules rules = 4;
+}
+message MatchSetup {
+  uint64 command_id = 1;
+  bytes game_session_id = 2;
+  MatchConfiguration configuration = 3;
+  bytes configuration_sha256 = 4;
+  bool response = 5;
+  bool accepted = 6;
+  string reason = 7;
+  uint64 writer_epoch = 8;
+  // SHA-256 over deterministic MatchConfiguration encoding; see protocol.md.
+}
+message AvatarState {
+  uint32 player_slot = 1;
+  Vector3 position_m = 2;
+  Vector3 velocity_m_s = 3;
+  float heading_rad = 4;
+  Vector3 target_m = 5;
+  MovementMode movement = 6;
+  uint32 coverage_owner_slot = 7;
+}
+message ServeState {
+  ServePhase phase = 1;
+  uint32 server_slot = 2;
+  uint32 receiver_slot = 3;
+  ServiceSide side = 4;
+  uint32 attempt = 5;
+  bool stroke_attempted = 6;
+  bool net_touched = 7;
+  uint64 toss_id = 8;
+  repeated uint32 service_order = 9;
+  repeated uint32 receiving_order = 10;
+  uint32 service_turn_index = 11;
+  uint32 tiebreak_first_server_slot = 12;
+  // Receiving order: A deuce, A ad, B deuce, B ad. Orders are set-scoped.
+}
+message RallyState {
+  uint64 rally_id = 1;
+  uint32 last_hitter_slot = 2;
+  Team last_bounce_team = 3;
+  uint32 bounce_count = 4;
+  bool net_touched = 5;
+  bool service_return_pending = 6;
+  uint32 contact_slot_mask = 7;
+  uint64 contact_id = 8;
+  uint64 bounce_id = 9;
+  Team point_winner = 10;
+}
+message CompletedSet {
+  uint32 games_a = 1;
+  uint32 games_b = 2;
+  bool had_tiebreak = 3;
+  uint64 tiebreak_points_a = 4;
+  uint64 tiebreak_points_b = 5;
+}
+message ScoreState {
+  PointScore points_a = 1;
+  PointScore points_b = 2;
+  uint32 games_a = 3;
+  uint32 games_b = 4;
+  uint32 sets_a = 5;
+  uint32 sets_b = 6;
+  bool tiebreak = 7;
+  uint64 tiebreak_points_a = 8;
+  uint64 tiebreak_points_b = 9;
+  repeated CompletedSet completed_sets = 10;
+}
+message MatchState {
+  Ball ball = 1;
+  uint32 roster_revision = 2;
+  uint32 rules_revision = 3;
+  bytes configuration_sha256 = 4;
+  repeated AvatarState avatars = 5;
+  ServeState serve = 6;
+  RallyState rally = 7;
+  ScoreState score = 8;
+  bool team_a_near_end = 9;
+  MatchPhase phase = 10;
+  Team winner = 11;
+  uint64 point_id = 12;
+  uint64 state_time_pi_us = 13;
+  bytes pi_reference_session_id = 14;
+  uint32 pi_reference_clock_id = 15;
+}
+enum RuleEventKind {
+  RULE_UNSPECIFIED = 0;
+  TOSS_STARTED = 1;
+  TOSS_CANCELLED = 2;
+  SERVE_ATTEMPT = 3;
+  LEGAL_CONTACT = 4;
+  BALL_BOUNCE = 5;
+  BALL_OUT = 6;
+  SERVE_FAULT_EVENT = 7;
+  SERVE_LET_EVENT = 8;
+  POINT_AWARDED = 9;
+  GAME_AWARDED = 10;
+  SET_AWARDED = 11;
+  MATCH_AWARDED = 12;
+  ENDS_CHANGED = 13;
+  TECHNICAL_PAUSE = 14;
+  PLAY_RESUMED = 15;
+}
+message RuleEvent {
+  uint32 event_index = 1;
+  RuleEventKind kind = 2;
+  uint64 point_id = 3;
+  uint32 player_slot = 4;
+  Team team = 5;
+  bool has_cause = 6;
+  uint32 cause_decision_index = 7;
+  uint64 simulation_tick = 8;
+  uint32 serve_attempt = 9;
+  // Indices 8..23, ordered independently of Decision indices 0..7.
+  // Periodic events have has_cause=false and never invent a transaction.
 }
 
 // Control plane: same envelope, four-byte big-endian length framing on TCP.
