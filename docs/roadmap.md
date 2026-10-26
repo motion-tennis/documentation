@@ -45,7 +45,7 @@ These are eventual capabilities across multiple stages, not a task to implement 
 | O-16 | External AP versus Pi hotspot deployment | Run the matched WLAN A/B plan; prove B's interface/address/route and Windows collector reachability, then compare full-path p99/failures, Pi headroom, recovery and setup complexity under unchanged application traffic |
 | O-17 | Clock estimator parameters and demonstrated uncertainty | Pi reference, drift correction and visible uncertainty are agreed in [ADR 0009](adr/0009-pi-reference-clock-mapping.md); pin exchange cadence within refresh windows, sample count, fit/filter/window, drift-growth bound and timestamp implementation; validate asymmetry and source/reference restarts against independent evidence |
 | O-18 | Doubles tuning and match format | 2v2, automatic movement, overhead gesture serve, normal score and two team views are agreed; tune coverage/speed, local motion scale, shot transfer/assistance and serve windows. Best-of-three sets and horizontal A/B split are proposed defaults |
-| O-19 | Full-match baseline adoption and runtime conformance | Proposed v0.3 schema/profile, [ADR 0011](adr/0011-full-match-contract-and-state-stream.md), generated codec fixtures and [S0 reviews](s0-baseline.md) are available; human adoption and S1/S2 target/runtime conformance remain distinct gates. |
+| O-19 | Full-match runtime conformance | The project user accepted v0.3, [ADR 0011](adr/0011-full-match-contract-and-state-stream.md), generated codec fixtures and [S0 reviews](s0-baseline.md) on 2026-10-26; S1/S2 target/runtime conformance remains outstanding. |
 
 ## Recording changes
 

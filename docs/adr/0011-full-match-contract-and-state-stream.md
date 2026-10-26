@@ -1,7 +1,7 @@
 # ADR 0011: Full-match v0.3 contract and bounded state stream
 
 - Date: 2026-10-26
-- Status: Proposed S0 baseline; technical review and host fixtures are recorded in [S0 evidence](../s0-baseline.md). Human gate acceptance is pending.
+- Status: Accepted S0 design baseline on 2026-10-26 by the project user; [the gate decision](../project-status.md#s0-accepted--2026-10-26) releases S1. Host evidence is recorded in [S0 evidence](../s0-baseline.md); runtime and hardware validation remain outstanding.
 - Supersedes: the ball-only schema and Pi/PC UDP state leg of [ADR 0005](0005-webcam-wireless-pi3-masterplan.md). Controller/feedback and tracking UDP, separate TCP control, and the selected tracking direction remain unchanged.
 
 ## Context
@@ -10,7 +10,7 @@ The agreed doubles game needs one state for ball, four avatars, roster/configura
 
 Reducing the input rate, dropping query identities, lowering batch capacity or splitting an atomic state into separately committed pieces would change agreed behavior. Increasing UDP size would make path MTU/fragmentation another correctness dependency. Compacting identifiers through undocumented aliases would weaken traceability.
 
-## Proposed decision
+## Decision
 
 Use `motion.v03`, exact protocol/profile/schema negotiation, a typed `MatchSetup` and complete `MatchState`. Reserve the removed ball-only snapshot/update fields. Every candidate includes the complete match plus at most eight decisions and sixteen rule events. An immutable setup digest/revision binds four confirmed controller/person/avatar slots to rules and tuning. All setup changes are writer-epoch fenced and use the existing suspended installation/ACK/resume barriers.
 
@@ -26,4 +26,4 @@ The state stream avoids IP fragmentation and retains one atomic bounded message.
 
 Generated Python and statically bounded nanopb C host fixtures check cross-codec bytes/round trips, maximum structural encodings, malformed/truncated/oversized inputs and contract storage products. Offline semantic fixtures check setup, references, ordering and atomic replay/rejection. Target compiler/ABI interoperability, device memory headroom, real rules calculation, runtime validation and networking remain S1/S2/S4 work.
 
-The versioned assumptions and later proof gates are in [S0 evidence](../s0-baseline.md). Adopting this proposed baseline is part of human S0 acceptance; the implementation task does not independently release S1.
+The project user accepted this interface baseline and its [versioned assumptions and later proof gates](../s0-baseline.md#versioned-assumptions-and-later-gates) on 2026-10-26. The [recorded S0 decision](../project-status.md#s0-accepted--2026-10-26) releases S1. Exact schema/profile bytes and their original version/status labels are retained to preserve the reviewed hashes. Acceptance does not establish measured performance or release S2.

@@ -2,24 +2,24 @@
 
 [Documentation home](../README.md) · [Central status](project-status.md) · [Protocol](protocol.md) · [ADR 0011](adr/0011-full-match-contract-and-state-stream.md)
 
-Evidence date: 2026-10-26. This user-authorized S0 task supplies the full-match contract, generated host-codec checks, offline semantic fixtures, resource bounds, component reviews and bounded S1 handoffs. It does not implement firmware, tracking, simulation, networking, rendering or a complete rules engine. Human S0 acceptance remains pending in the central ledger.
+Evidence date: 2026-10-26. This user-authorized S0 task supplies the full-match contract, generated host-codec checks, offline semantic fixtures, resource bounds, component reviews and bounded S1 handoffs. It does not implement firmware, tracking, simulation, networking, rendering or a complete rules engine. The project user accepted this baseline on 2026-10-26; the [central gate decision](project-status.md#s0-accepted--2026-10-26) releases S1.
 
 ## Task and compatible baseline
 
-The allowed scope is shared schema/profile, contract-validation tools/fixtures and coordinated documentation across all six repositories. Dependencies are the existing agreed doubles, association, continuous IMU, diagnostic marker and Pi-reference clock contracts. No later-stage exception is needed: these are S0 validation artifacts. The candidate is `motion.v03`, protocol `0.3-proposed`, profile `webcam-pi3-doubles-v3`; all numeric performance targets remain proposed and unmeasured.
+The allowed scope is shared schema/profile, contract-validation tools/fixtures and coordinated documentation across all six repositories. Dependencies are the existing agreed doubles, association, continuous IMU, diagnostic marker and Pi-reference clock contracts. No later-stage exception is needed: these are S0 validation artifacts. The accepted artifact is `motion.v03`, protocol `0.3-proposed`, profile `webcam-pi3-doubles-v3`; all numeric performance targets remain proposed and unmeasured. The original proposal/status labels remain in the byte-pinned schema/profile as provenance; the central ledger records their subsequent adoption. Acceptance changes no payload, profile value or evidence hash.
 
 | Repository | Inspected base revision | Compatible S0 revision | Included changes |
 | --- | --- | --- | --- |
-| documentation | `95c2592` | Commit containing this version of the baseline | v0.3 schema/profile, tools, fixtures and central evidence |
+| documentation | `95c2592` | `d1b0c099c95571615a5ec09697146fe972b952be` | v0.3 schema/profile, tools, fixtures and central evidence |
 | motion-tennis-controller | `a4efd91` | `f8fc435230f7befeb01b5ff7864067098348135d` | Component review and S1 handoff |
 | motion-tennis-camera-tracking | `d7e91b2` | `e2dce918b8fa7b8d494ac36c2f91e4f84df3aacc` | Component review and S1 handoff |
 | motion-tennis-physics-engine | `55c64e5` | `c4202506870fa45aa007f840275eddf58f1d3df5` | Component review, transport alignment and S1 handoff |
 | motion-tennis-game-engine | `80fe7ec` | `4564102386c26049b951c5e0ef1e78ab6216b9a3` | Component review, transport alignment and S1 handoff |
 | debug-units | `9a7f27d` | `1cd720f9f1b217ce06793b188c0fb245a47c9b58` | Component review, full-match trace provenance and S1 handoff |
 
-The inspected base commits alone do not contain the candidate. The compatible component revisions above were committed locally at the user's request. For the documentation revision, retain the full commit ID containing this version of the baseline together with the exact schema/profile and validation-source SHA-256 values in the machine-readable [contract report](../evidence/s0-contract-report.json). This avoids a self-referential commit hash inside its own contents. Pin that full documentation commit ID in each subsequent task/run manifest before runtime integration.
+The inspected base commits alone do not contain the accepted S0 artifact. The compatible revisions above were committed locally at the user's request and are pinned by the human gate decision. Use that documentation revision with the exact schema/profile and validation-source SHA-256 values in the machine-readable [contract report](../evidence/s0-contract-report.json). Later acceptance-record edits do not change those contract bytes. Pin both the accepted contract revision and current stage/task revision when beginning an S1 slice.
 
-The local commit step does not accept S0 or release S1, and no push was performed. The documentation checker detects changed, missing or newly added contract sources against the saved report.
+The earlier local commit step preserved the reviewable artifact; the subsequent explicit human decision accepted S0 and released S1. No push was performed. The documentation checker detects changed, missing or newly added contract sources against the saved report.
 
 ## Implemented artifacts and coverage
 
@@ -33,7 +33,7 @@ The suite's codec maxima are **structural upper bounds**, with every bounded col
 
 ## Size and resource results
 
-The exact output and environment are retained in the [report](../evidence/s0-contract-report.json); rerun it when any contract input changes. A valid high-width eight-decision full-match envelope is **1,434 bytes**, so retaining the old 1,200-byte state datagram would reject a permitted batch. [ADR 0011](adr/0011-full-match-contract-and-state-stream.md) therefore proposes a dedicated 8,192-byte framed TCP state channel. Controller input/feedback and pose/status retain their 1,200-byte UDP limit, rates and deadlines.
+The exact output and environment are retained in the [report](../evidence/s0-contract-report.json); rerun it when any contract input changes. A valid high-width eight-decision full-match envelope is **1,434 bytes**, so retaining the old 1,200-byte state datagram would reject a permitted batch. [ADR 0011](adr/0011-full-match-contract-and-state-stream.md) therefore specifies the accepted dedicated 8,192-byte framed TCP state channel. Controller input/feedback and pose/status retain their 1,200-byte UDP limit, rates and deadlines.
 
 The final run passed **27 Python/C round trips, 62 rejection/envelope cases and 32 semantic tests**. The separate freshness suite passed six tests. The existing debug suite passed all nine tests and its synthetic audit retained expected outcome accounting.
 
@@ -55,7 +55,7 @@ A host pass proves bounded schema representation and declared allocation product
 
 | Area / decision register | S0 disposition | Required later evidence |
 | --- | --- | --- |
-| Full-match and size, O-10/O-19 | Proposed v0.3 typed contract, exact-hash negotiation and bounded state stream in ADR 0011; host fixtures/resource model supplied | Human baseline adoption; S1 target codecs/ABI, S2 state capacity and transport, S4 full gameplay |
+| Full-match and size, O-10/O-19 | Accepted v0.3 typed contract, exact-hash negotiation and bounded state stream in ADR 0011; host fixtures/resource model supplied | S1 target codecs/ABI, S2 state capacity and transport, S4 full gameplay |
 | Match format, O-18 | Standard advantage games and tie-break sets; supported sets-to-win 1/2/3, default 2. Match length remains a reviewable profile assumption | Chosen run configuration and complete S4 rules/serve/end-change acceptance |
 | Motion, calibration and confidence, O-05/O-06/O-18 | SI/body-local 2.5D, immutable tuning hash and explicit invalidity; synthetic fixtures use an identified placeholder tuning hash | Versioned concrete parameter/calibration artifact and recorded-input S1/S2 evidence, then S4 tuning; no fabricated accuracy |
 | Boards, sensors, dependencies, O-01/O-02/O-03/O-04/O-14 | Pi 3 B, webcam/Windows direction, MPU-6050/I2C/Zephyr fixed; exact board/pins/model/runtime manifests remain per-task prerequisites | Pin actual parts and toolchains before the corresponding S1 slice; S2 capture/IMU/GPU/shared-INT feasibility |
@@ -68,7 +68,7 @@ No blocker is hidden by an invented measurement. Parameters that do not change t
 
 ## Component reviews and S1 handoffs
 
-All five documents are AI technical reviews of their producer/consumer boundary, not recorded human gate acceptance. The physics/game reviews cover both ends of the shared complete-state interface; other reviews preserve the unchanged controller/pose contracts and diagnostic provenance.
+All five documents are AI technical reviews of their producer/consumer boundary. The subsequent human acceptance is recorded separately in the [central ledger](project-status.md#s0-accepted--2026-10-26). The physics/game reviews cover both ends of the shared complete-state interface; other reviews preserve the unchanged controller/pose contracts and diagnostic provenance.
 
 | Component | Reviewed handoff | First bounded S1 outcome |
 | --- | --- | --- |
@@ -101,4 +101,4 @@ The existing debug audit/tests are run separately from `debug-units` using its r
 
 ## Gate disposition
 
-Technical baseline prepared for human review. The central ledger records completed evidence items while retaining **S0 — Active, incomplete** and **S1 — Not released** until a responsible human accepts this exact proposed baseline, including ADR 0011 and the documented assumptions. A local test pass cannot release a shared stage.
+**S0 accepted; S1 released on 2026-10-26.** The project user approved the complete-match contract, dedicated TCP state channel and use of this baseline for isolated component development. The [central ledger](project-status.md#s0-accepted--2026-10-26) retains the completed S0 checklist, exact revisions/hashes, evidence and limitations. The active S1 checklist starts with no implementation items complete. Hardware, performance and full gameplay gates remain in their named later stages.

@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Master plan](master-plan.md) · [Schema](../spec/motion.proto) · [Reference profile](../spec/reference-profile.json)
 
-**Proposed reference design, not implemented runtime behavior.** `0.3-proposed` supersedes the unimplemented ball-only 0.2 proposal. [ADR 0011](adr/0011-full-match-contract-and-state-stream.md) records the complete-match extension and dedicated state stream. Generated host codecs and offline contract checks are available; no device or network runtime is implemented. The [Protocol Buffers schema](../spec/motion.proto) defines field numbers and types; this page defines required presence, bounds and behavior that proto3 alone does not enforce. All six repositories must agree on the schema/profile SHA-256 before integration.
+**Accepted S0 interface baseline; runtime behavior remains unimplemented.** The project user accepted this contract and ADR 0011 on 2026-10-26; see the [gate decision](project-status.md#s0-accepted--2026-10-26). The byte-pinned identifier `0.3-proposed` and original profile status labels remain unchanged for exact-hash compatibility. Numeric performance targets remain unmeasured. `0.3-proposed` supersedes the unimplemented ball-only 0.2 proposal. [ADR 0011](adr/0011-full-match-contract-and-state-stream.md) records the complete-match extension and dedicated state stream. Generated host codecs and offline contract checks are available; no device or network runtime is implemented. The [Protocol Buffers schema](../spec/motion.proto) defines field numbers and types; this page defines required presence, bounds and behavior that proto3 alone does not enforce. All six repositories must agree on the schema/profile SHA-256 before integration.
 
 **Agreed clock design:** [ADR 0009](adr/0009-pi-reference-clock-mapping.md) selects Pi-reference affine clock mappings with drift correction and visible uncertainty. The existing `ClockExchange` supports the planned exchanges; no schema, port or numeric profile setting changes. Runtime estimation, readiness integration and mapping-aware debug validation remain unimplemented.
 
@@ -131,7 +131,7 @@ A Pi restart/reference discontinuity starts a new reference epoch and prevents f
 
 ## Doubles match contract extension
 
-**Implemented contract source and offline validation; proposed runtime design.** The v0.3 schema carries typed match configuration, full snapshots/candidates and rule events. Its generated host codecs and semantic fixtures are described in [S0 evidence](s0-baseline.md). This is not a running doubles game or target-device interoperability claim.
+**Implemented contract source and offline validation; S0-accepted interface design.** The v0.3 schema carries typed match configuration, full snapshots/candidates and rule events. Its generated host codecs and semantic fixtures are described in [S0 evidence](s0-baseline.md). This is not a running doubles game or target-device interoperability claim.
 
 ### Setup and immutable configuration
 

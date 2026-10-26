@@ -43,4 +43,4 @@ The checker inspects available sibling repositories. Missing siblings are skips,
 
 ## First bounded work
 
-Consult the active stage instead of choosing an entire component backlog. The technical S0 baseline and component reviews are recorded in [S0 evidence](s0-baseline.md); consult the ledger for remaining acceptance work. The next task can address one producer/consumer boundary and list its unresolved decisions; it should not implement all consumers. Use the [shared brief and handoff](contribution-workflow.md).
+Consult the active stage instead of choosing an entire component backlog. The technical S0 baseline and component reviews are recorded in [S0 evidence](s0-baseline.md); S0 is accepted and the ledger now tracks the released S1 component slices. The next task can address one producer/consumer boundary and list its unresolved decisions; it should not implement all consumers. Use the [shared brief and handoff](contribution-workflow.md).
