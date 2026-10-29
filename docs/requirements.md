@@ -15,7 +15,7 @@
 | F-05 | Pi calculates hit/miss and resulting ball motion | Deterministic fixtures, collision/contact-latch and fusion tests |
 | F-06 | Every generated transaction ends in a correlated result or counted local failure | Includes misses, invalid inputs, overload, loss, timeout and reporting-cutoff pending work |
 | F-07 | Feedback distinguishes hits, completed missed swings and faults | Bounded semantic cues, eligibility flags, electrical traces; no 200 Hz pulse assumption |
-| F-08 | Windows stores sole committed match state and provides UI/visualization | Versioned v0.3 match contract; atomic ball/avatar/serve/score tests and independent renderer |
+| F-08 | Windows stores sole committed match state and provides Unity/C# UI/visualization in a separate process | Versioned v0.3 match contract; atomic ball/avatar/serve/score tests and independent Unity client; [ADR 0012](adr/0012-unity-game-engine.md) |
 | F-09 | Resolve four-player concurrency and periodic motion without competing state writers | Ordered atomic batches, CAS/version checks, bounded catch-up, session/epoch fencing |
 | F-10 | Preserve original capture timestamps and source IDs through processing | Separate capture/arrival/compute/simulation trace fields with clock domains |
 | F-11 | Explicit connection, association, calibration, loss and restart handling | Readiness barriers; no silent nearest-person reassignment or replayed haptics |

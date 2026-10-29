@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Master plan](master-plan.md) · [ADRs](adr/README.md)
 
-The reference is concrete enough to divide work without inventing running software. Hardware availability and webcam/2.5D/wireless direction are confirmed; component implementations and measured timing remain absent. [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md) fixes MPU-6050 over I²C with Zephyr for the first prototype. Exact board/breakout, dependency versions and measured marker feasibility remain open. Dates and staffing are not invented.
+The reference is concrete enough to divide work without inventing running software. Hardware availability and webcam/2.5D/wireless direction are confirmed; component implementations and measured timing remain absent. [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md) fixes MPU-6050 over I²C with Zephyr for the first prototype. Unity/C# is selected for the game client and UI in [ADR 0012](adr/0012-unity-game-engine.md), replacing SDL3. Exact board/breakout, dependency versions and measured marker feasibility remain open. Dates and staffing are not invented.
 
 ## Delivery order
 
@@ -19,7 +19,7 @@ These are eventual capabilities across multiple stages, not a task to implement 
 - **Controller:** board/power design; [selected MPU-6050/I²C prototype](imu-selection.md) with pinned Zephyr/HAL/driver; explicit DLPF/divider initialization and readback; motion-trigger extension and shared-INT source attribution; regular-sample ISR/clock/session IDs; early threshold capture and explicit trace links; bounded UDP/control codec, pending table, association installation ACK, semantic cue scheduler, trace exporter and physical test points. Preserve the continuous gameplay stream.
 - **Tracking:** Media Foundation adapter and rectification, latest-frame handoff, pinned RTMO-m/ORT GPU manifest, identity association, per-person publication, clock/uncertainty characterization and pairing diagnostics.
 - **Physics:** native receiver, Pi-reference clock coordinator with offset/drift estimation and versioned uncertainty records, IMU/pose histories, delayed fusion, calibrated plane mapping, swing/contact state machines, single batch writer, query/commit recovery, fixed-step simulation and buffered trace integration.
-- **Game:** native snapshot/commit service, persistent-for-session dedup cache, control/readiness/reset handling, separate minimal SDL3 renderer, state/pose diagnostics and presentation markers.
+- **Game:** native snapshot/commit service, persistent-for-session dedup cache, control/readiness/reset handling, separate minimal Unity/C# game client with two team views, state/pose diagnostics and presentation markers.
 - **Debug:** runtime emitters/collector, source registry, protobuf packet decoding and pcap joining, timeline/UI/reporting, virtual controllers/poses/game, deterministic replay, packet/message fault injector and evidence bundles. Display the runtime's Pi-reference mapping versions, offset/drift, age/status and uncertainty bands; retain unmapped local lanes and test overlapping intervals. Add marker/link integrity checks and separate trigger-to-response/swing/cue reporting under the [marker contract](imu-trigger-markers.md). Offline checker/tests are the only implemented subset; they do not yet audit marker or clock-mapping semantics.
 - **Documentation:** pin decisions, review cross-repository schema changes, keep English instructions and exact measured validation status, publish no fake build commands or benchmarks.
 
@@ -46,6 +46,7 @@ These are eventual capabilities across multiple stages, not a task to implement 
 | O-17 | Clock estimator parameters and demonstrated uncertainty | Pi reference, drift correction and visible uncertainty are agreed in [ADR 0009](adr/0009-pi-reference-clock-mapping.md); pin exchange cadence within refresh windows, sample count, fit/filter/window, drift-growth bound and timestamp implementation; validate asymmetry and source/reference restarts against independent evidence |
 | O-18 | Doubles tuning and match format | 2v2, automatic movement, overhead gesture serve, normal score and two team views are agreed; tune coverage/speed, local motion scale, shot transfer/assistance and serve windows. Best-of-three sets and horizontal A/B split are proposed defaults |
 | O-19 | Full-match runtime conformance | The project user accepted v0.3, [ADR 0011](adr/0011-full-match-contract-and-state-stream.md), generated codec fixtures and [S0 reviews](s0-baseline.md) on 2026-10-26; S1/S2 target/runtime conformance remains outstanding. |
+| O-20 | Verified Unity setup and presentation integration | Unity/C# is agreed; pin the editor version, Windows build support, render pipeline, scripting backend and C# Protobuf dependencies after verification. Test the coordinate adapter, two-view consistency and state-service isolation under inference/render load; selection is not runtime evidence. |
 
 ## Recording changes
 

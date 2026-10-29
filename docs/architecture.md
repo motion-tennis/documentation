@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Master plan](master-plan.md) · [Protocol](protocol.md) · [Consistency](physics.md)
 
-**Confirmed direction:** four wireless battery controllers, available Pi 3 Model B, Windows RTX 5080 laptop, webcam-first 2.5D play. **Proposed:** the detailed reference stack, batching, UDP/Protobuf and state-commit protocol. **Implemented:** documentation, offline debug tooling and host contract-validation tools only.
+**Confirmed direction:** four wireless battery controllers, available Pi 3 Model B, Windows RTX 5080 laptop, webcam-first 2.5D play, and a Unity/C# game client with a separate committed-state service ([ADR 0012](adr/0012-unity-game-engine.md)). **Proposed:** the detailed reference stack, batching, UDP/Protobuf and state-commit protocol. **Implemented:** documentation, offline debug tooling and host contract-validation tools only.
 
 ## Physical deployment
 
@@ -25,7 +25,7 @@ flowchart LR
     subgraph pc["Windows laptop / user-reported RTX 5080"]
         T["Capture, RTMO-m GPU, person tracking<br/>motion-tennis-camera-tracking"]
         G["Native committed-state service<br/>motion-tennis-game-engine"]
-        R["Separate SDL3 renderer and UI<br/>motion-tennis-game-engine"]
+        R["Separate Unity/C# game client and UI<br/>motion-tennis-game-engine"]
         D["Trace collector, viewer and offline audit<br/>debug-units; live modules planned"]
     end
     C <-->|"Wi-Fi UDP / control TCP"| AP
@@ -51,7 +51,7 @@ flowchart LR
     T["Continuous webcam tracking"]
     P["Pi fusion / single physics writer"]
     G["Windows committed-state service"]
-    R["Game renderer / UI"]
+    R["Unity game client / UI"]
     D["Debug units"]
     C -->|"controller_input: one key per regular sample"| P
     T -->|"skeleton_frame per person / frame_status"| P
@@ -81,7 +81,7 @@ sequenceDiagram
     participant T as Windows webcam tracking
     participant P as Pi 3 fusion and physics
     participant G as Windows game state service
-    participant R as Separate renderer
+    participant R as Separate Unity game client
     loop Continuous independent capture and inference
         T-->>P: Per-person skeleton_frame and frame_status
     end

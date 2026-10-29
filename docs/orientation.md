@@ -6,7 +6,7 @@
 
 This repository is the shared context for people and AI agents working in the six Motion Tennis repositories. It owns architecture, requirements, interface/time/measurement contracts, ADRs, stage definitions and the central evidence ledger. It defines compatible behavior; firmware, tracking, simulation, state service/rendering and diagnostic runtimes belong in their component repositories.
 
-The full system uses four continuously sampling ESP32 controllers, Windows webcam tracking, a Raspberry Pi 3 B for fusion and sole match-state calculation, and a Windows committed-state service plus two team views. `debug-units` correlates their evidence. The required Pi-to-PC ball-state request/response stays in every applicable transaction; the independent IMU IRQ is a trace marker and never an extra gameplay sample. Pi-reference time maps correct offset/drift and expose uncertainty. See [architecture](architecture.md) and [master plan](master-plan.md).
+The full system uses four continuously sampling ESP32 controllers, Windows webcam tracking, a Raspberry Pi 3 B for fusion and sole match-state calculation, and a Windows committed-state service plus a separate Unity/C# game client with two team views. `debug-units` correlates their evidence. The required Pi-to-PC ball-state request/response stays in every applicable transaction; the independent IMU IRQ is a trace marker and never an extra gameplay sample. Pi-reference time maps correct offset/drift and expose uncertainty. See [architecture](architecture.md) and [master plan](master-plan.md).
 
 ## Read first
 

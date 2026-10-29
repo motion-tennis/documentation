@@ -2,7 +2,7 @@
 
 [Decision index](README.md) · [Master plan](../master-plan.md)
 
-**Status:** User-confirmed constraints and proposed reference implementation, 2026-10-24. Supersedes hardware/deployment assumptions in ADR 0001 and transport/backend proposal ADR 0004; refines ADR 0002. Runtime implementation and measurements are absent.
+**Status:** User-confirmed constraints and proposed reference implementation, 2026-10-24. Supersedes hardware/deployment assumptions in ADR 0001 and transport/backend proposal ADR 0004; refines ADR 0002. Runtime implementation and measurements are absent. The SDL3 renderer proposal below is superseded by the user-selected Unity/C# game client in [ADR 0012](0012-unity-game-engine.md), 2026-10-29; the separate state-service boundary is retained.
 
 ## Confirmed inputs
 

@@ -10,7 +10,7 @@ The agreed game is [2v2 doubles](gameplay.md): humans remain in physical trackin
 
 The proposed v0.3 full-match contract and its offline host checks establish an interface for those requirements; no working match or renderer is implied. One-to-three-controller runs remain diagnostic integration tests, while a normal match requires four confirmed players.
 
-**Implemented:** documentation, schema/profile design files, a documentation checker, and an offline debug trace checker with synthetic tests. No real controller firmware, tracking pipeline, physics service or game state/renderer is implemented. **Agreed design:** hardware context, webcam/2.5D direction and [MPU-6050 over I²C with Zephyr for the first prototype](adr/0008-mpu6050-zephyr-prototype.md). Remaining reference stack choices, timing limits and algorithms are **Proposed**; the chosen prototype still requires implementation and validation. See [status vocabulary](../README.md#status-vocabulary).
+**Implemented:** documentation, schema/profile design files, a documentation checker, and an offline debug trace checker with synthetic tests. No real controller firmware, tracking pipeline, physics service or game state/renderer is implemented. **Agreed design:** hardware context, webcam/2.5D direction, [MPU-6050 over I²C with Zephyr for the first prototype](adr/0008-mpu6050-zephyr-prototype.md) and [Unity/C# for the Windows game client and UI](adr/0012-unity-game-engine.md). Remaining reference stack choices, timing limits and algorithms are **Proposed**; the chosen prototype still requires implementation and validation. See [status vocabulary](../README.md#status-vocabulary).
 
 ## Repository inspection evidence
 

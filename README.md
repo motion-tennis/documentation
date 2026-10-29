@@ -2,7 +2,7 @@
 
 Motion Tennis is a multiplayer tennis demonstrator for up to four players. The main objective is to make distributed processing, latency, synchronization, data freshness, and measurable timing behavior visible. Sophisticated graphics are secondary.
 
-**Current status:** six repositories contain coordinated documentation. This repository also provides generated host-codec and offline match-contract checks; `debug-units` provides an offline trace checker and synthetic integrity tests; the controller, tracking, physics and game runtimes are not implemented. The current reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers, and webcam-first 2.5D gameplay. Detailed stacks and budgets are proposed, unverified implementation targets.
+**Current status:** six repositories contain coordinated documentation. This repository also provides generated host-codec and offline match-contract checks; `debug-units` provides an offline trace checker and synthetic integrity tests; the controller, tracking, physics and game runtimes are not implemented. The current reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers, and webcam-first 2.5D gameplay. Unity with C# is selected for the Windows game client and UI; see [ADR 0012](docs/adr/0012-unity-game-engine.md). Remaining stack choices and budgets are proposed, unverified implementation targets.
 
 ## Project progress
 
@@ -42,7 +42,7 @@ These links derive from the inspected Git remotes. All local checkouts track `or
 | [motion-tennis-controller](https://github.com/motion-tennis/motion-tennis-controller) | IMU measurements, transaction timing, LED and haptic feedback | Four wireless battery ESP32 handhelds; S3 reference proposed |
 | [motion-tennis-camera-tracking](https://github.com/motion-tennis/motion-tennis-camera-tracking) | Continuous webcam pose estimation and identity tracking | Windows RTX 5080 laptop; RTMO-m reference proposed |
 | [motion-tennis-physics-engine](https://github.com/motion-tennis/motion-tennis-physics-engine) | Temporal fusion, hit decisions, sole ball-state calculations | Available Raspberry Pi 3 Model B |
-| [motion-tennis-game-engine](https://github.com/motion-tennis/motion-tennis-game-engine) | Committed ball-state service and separate visualization | Windows laptop; native C++/SDL3 reference proposed |
+| [motion-tennis-game-engine](https://github.com/motion-tennis/motion-tennis-game-engine) | Committed match-state service and separate Unity visualization/UI | Windows laptop; Unity/C# selected, native C++20 state service proposed |
 | [debug-units](https://github.com/motion-tennis/debug-units) | Offline trace audit now; live collection, viewer and fault harness planned | Windows analysis host; bounded emitters on all devices |
 
 Tracking, state service, visualization and debug collection share the laptop as separate software components. Webcam-first 2.5D and Windows deployment supersede the earlier Kinect/Linux assumptions. Kinect/depth/stereo remains a later true-3D option, not a prerequisite. See [tracking integration](docs/tracking.md).
