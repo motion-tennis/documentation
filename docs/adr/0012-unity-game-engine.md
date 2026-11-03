@@ -2,16 +2,16 @@
 
 [Decision index](README.md) · [Game integration](../game-engine.md) · [Master plan](../master-plan.md)
 
-**Status:** Agreed engine selection by explicit user request, 2026-10-29; implementation and validation pending. Supersedes the SDL3 renderer proposal in [ADR 0005](0005-webcam-wireless-pi3-masterplan.md). The separate committed-state service and Pi calculation authority remain unchanged.
+**Status:** Unity selected by explicit user request on 2026-10-29; C# for the committed-state service also confirmed by the user on 2026-11-03. Implementation and validation are pending. Supersedes the SDL3 renderer and native C++20 state-service proposals in [ADR 0005](0005-webcam-wireless-pi3-masterplan.md). The separate service process and Pi calculation authority remain unchanged.
 
 ## Context
 
-The earlier reference proposed a native C++20 state service and a separate C++/SDL3 renderer on Windows. The user now requires the game engine to be implemented in Unity. The game still needs two views of one doubles match, explicit player assignment, a scoreboard and diagnostics without coupling the Pi's required state exchanges to graphics frames.
+The earlier reference proposed a native C++20 state service and a separate C++/SDL3 renderer on Windows. The user selected Unity for the game client and later specified C# for the committed-state service as well. The game still needs two views of one doubles match, explicit player assignment, a scoreboard and diagnostics without coupling the Pi's required state exchanges to graphics frames.
 
 ## Decision
 
 - Implement the Windows game client, scene rendering, team cameras and player-facing UI in Unity with C#.
-- Keep the headless committed-state service in a separate process; native C++20/CMake remains its proposed implementation. Unity consumes committed snapshots/events and submits versioned control requests.
+- Implement the headless committed-state service in C# and keep it in a separate process from the Unity client/render loop. Unity consumes committed snapshots/events and submits versioned control requests. Pin the verified .NET/runtime target and Unity/package versions with the first implementation.
 - Keep ball physics, automatic avatar movement, contact/serve/rules and score calculation on the Pi. Unity animation and built-in physics must not become a second authoritative simulation.
 - Preserve the required `ball_state_request`/`ball_state_response`, atomic versioned commits and `state_commit_result`, session/epoch fencing, bounded subscriptions, continuous 200 Hz inputs, diagnostic markers and timing definitions.
 - Keep the accepted v0.3 schema and reference-profile bytes unchanged. This engine selection changes the presentation implementation, not the wire contract or calibrated 2.5D input model.

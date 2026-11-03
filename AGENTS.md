@@ -28,7 +28,7 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. Its f
 | `motion-tennis-controller` | Four wireless battery ESP32 handhelds; S3 reference proposed; MPU-6050 over I²C with Zephyr selected for the first prototype; captures samples and operates LED/haptic feedback |
 | `motion-tennis-camera-tracking` | Continuous webcam pose estimation on the Windows RTX 5080 laptop; active 2.5D body/joint input, later true 3D |
 | `motion-tennis-physics-engine` | Available Raspberry Pi 3 Model B; temporal fusion, ordered physics batches and sole ball-state calculations |
-| `motion-tennis-game-engine` | Windows committed-state service and separate Unity/C# game client/UI selected; native C++20 state service proposed |
+| `motion-tennis-game-engine` | Windows committed-state service and Unity/C# game client/UI; implement both service and client in C# while keeping the service process separate from rendering |
 | `debug-units` | Offline trace checker implemented; runtime collection, viewer, simulator/replay and fault injection planned |
 
 Tracking and visualization may share one physical PC while remaining separate software components and repositories. Handheld controllers are ESP32 devices, not Raspberry Pis. Do not assume specific boards, sensors, motor drivers, pins, runtimes or rendering frameworks without repository evidence.
