@@ -43,6 +43,18 @@ The user selected [2v2 doubles with automatic avatar movement](docs/gameplay.md)
 
 Before editing, inspect applicable instructions, Git status, remotes and branches, relevant source/configuration/build files, and existing documentation. Preserve uncommitted work and repository conventions. Derive repository URLs and branch links from actual Git configuration; do not invent owners, default branches or deployment URLs.
 
+## Git branch and remote workflow
+
+Follow the mandatory [shared Git workflow](docs/contribution-workflow.md#git-branch-and-remote-workflow) in every repository touched by a task.
+
+- Before editing any file, verify the current branch and worktree. Work on a dedicated task branch, never directly on `main`, a detached HEAD or another task's branch. Create or select the task branch first; use a separate worktree when needed to preserve unrelated work.
+- Fetch the verified remote before starting and base new task branches on its current `main`. If fetching fails, record the failure and known local base before continuing local work; remote freshness remains unverified and pushing must wait for successful synchronization.
+- Before every authorized push, fetch again, inspect changes to remote `main` since the recorded base, and integrate the latest remote `main` and any updates to the remote task branch. A previous pull or a clean worktree does not establish freshness.
+- Prefer merges to preserve published history. Resolve conflicts by preserving the intended behavior of both changes, ask only when intent is ambiguous, and rerun the relevant checks after integration. Verify that both fetched remote tips are ancestors of the commit to push when the remote task branch exists.
+- Push explicitly to the task branch. Do not force-push, rewrite shared history or push directly to `main` without explicit authorization. A rejected push requires another fetch, integration and validation, not an overwrite. Existing commit/push authorization remains valid; these checks do not grant it or require it to be requested again.
+
+## Implementation evidence
+
 At the initial inspection on 2026-10-24, the original five repositories contained only placeholder READMEs and MIT licenses. The six-repository masterplan revision adds shared specifications and real offline trace tools/tests in `debug-units`, not gameplay runtimes. Reinspect current files before implementation claims; update historical status statements when code arrives.
 
 Use these labels consistently:

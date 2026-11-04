@@ -6,12 +6,42 @@ Each task should produce one reviewable result in an identified repository and s
 
 ## Before starting
 
-1. Read the target repository's `AGENTS.md`, `docs/orientation.md` and `docs/workflow.md`. Inspect the actual branch, status, existing code and applicable instructions; preserve other contributors' work.
+1. Read the target repository's `AGENTS.md`, `docs/orientation.md` and `docs/workflow.md`. Inspect the actual branch, status, existing code and applicable instructions; preserve other contributors' work. Complete the [branch check](#git-branch-and-remote-workflow) before editing any file.
 2. Read [project status](project-status.md) and the relevant [stage gate](project-stages.md). Record the documentation revision and schema/profile versions used. With isolated checkouts, use a pinned, verified snapshot supplied in the task. If status cannot be established, continue useful inspection/planning and obtain the missing baseline before assuming runtime scope.
 3. Bound the task using the brief below. If a user already supplied sufficient scope or explicitly authorized a named later-stage slice, use that authorization; do not request it again. Record any stage exception and keep all unrelated later work deferred.
 4. Identify the repository/file area being edited and the responsible contributor in the team's existing coordination channel. Avoid overlapping writes; parallel agents should own disjoint paths or separate worktrees/branches as appropriate. A multi-repo contract change needs an explicit list of affected producers and consumers.
 
 There is no assumed task-tracking service or mandatory branch naming scheme. Do not send external messages, create remote issues or push branches merely to satisfy this document without the relevant user authorization.
+
+## Git branch and remote workflow
+
+This workflow is mandatory for human and AI contributions in all six repositories, including documentation-only edits. Verify the actual remote and default branch; the current project convention is `origin` and `main`, used in the examples below. Repeat the checks for every repository in a multi-repository task.
+
+### Before editing
+
+1. Check the repository path, `git status --short --branch`, `git branch --show-current`, `git remote -v` and `git worktree list`. Check for an unfinished merge, rebase or cherry-pick. Confirm branch ownership and task scope before touching files, including when resuming work or changing repositories/worktrees.
+2. Work on a dedicated task branch. Never edit directly on `main`, in detached HEAD state or on an unrelated task's branch. Create or select the correct branch first. Preserve existing edits and commits; use a separate worktree if another task owns the checkout. Do not reset, discard or automatically stash someone else's work, or continue their unfinished Git operation.
+3. Run `git fetch --prune origin` before starting. Create a new task branch from the freshly fetched `origin/main`, with `--no-track` so the task branch does not accidentally track `main`. If continuing an existing task branch, review its difference from the fetched base and remote task branch and synchronize it using the procedure below when its worktree is ready. Record the base commit with `git rev-parse origin/main` in the task brief.
+4. If fetching fails, report the failure. Local work may continue on a dedicated branch from a known local revision if the task does not require newer remote content; record that revision and that freshness is unverified. Do not claim synchronization or push until a fresh fetch and the checks below succeed.
+
+For a clean, unoccupied checkout after inspection and a successful fetch, replace the example name with a descriptive name for this task:
+
+```sh
+git switch --no-track -c task/short-description origin/main
+git branch --show-current
+git rev-parse origin/main
+```
+
+### Before every push
+
+1. Confirm that committing/pushing is authorized, the current branch is still the intended task branch, and the destination remote/ref is correct. Existing authorization is sufficient; do not ask again for routine synchronization. Branch creation, editing or this workflow alone does not authorize publication. Prepare reviewed, scoped commits when authorized, and require a clean index/worktree with no unfinished Git operation before integration.
+2. Fetch again with `git fetch --prune origin`, even if a pull or fetch succeeded earlier in the task. Compare the recorded base with the new `origin/main` and inspect incoming changes with `git log --oneline HEAD..origin/main` and `git diff HEAD...origin/main`. Also inspect `origin/<task-branch>` if it exists; another contributor may have pushed to it. If the base was rewritten or a previously published task branch disappeared, investigate before proceeding rather than silently replacing remote work.
+3. Integrate missing remote task-branch commits first, then the newest `origin/main`, into the task branch. Prefer `git merge origin/<task-branch>` (when it exists) and `git merge origin/main`; these preserve shared history. Rebase is an option only for commits known to be unpublished and unshared. Do not rewrite published/shared commits or force-push unless explicitly authorized.
+4. Resolve conflicts by reading both changes and preserving their intended behavior. Do not blindly accept all of `ours` or `theirs`. Ask for clarification only when the intended combined behavior is genuinely ambiguous; otherwise complete the resolution, stage the resolved files and finish the merge or permitted rebase. Rerun relevant checks against the combined result, including `git diff --check`, and review the final diff. No push with unresolved conflicts, failed required checks or an unfinished Git operation.
+5. Verify that `git merge-base --is-ancestor origin/main HEAD` exits successfully. If the remote task branch exists, require `git merge-base --is-ancestor origin/<task-branch> HEAD` to succeed too. These checks confirm that the commit to push includes both fetched tips. Record the integrated base revision and validation results in the handoff.
+6. Push only the task branch using an explicit destination, for example `git push -u origin HEAD:refs/heads/task/short-description`. Never push directly to `main` without explicit authorization; normal integration is through the project's review/pull-request process. A non-fast-forward rejection means fetch, inspect, integrate and validate again. Never bypass it with a force push.
+
+A fetch verifies a point in time, not a lock on the remote. If `main` advances during validation or review, repeat synchronization and affected checks before the next push and before merging the pull request. Do not claim server-enforced freshness or branch protection unless it has actually been configured and verified. This workflow does not install hooks or change repository settings.
 
 ## Task brief
 
@@ -20,6 +50,7 @@ Copy this into the task or existing issue/review description, replacing the plac
 ```text
 Task / contributor:
 Repository and allowed file/component scope:
+Task branch, remote/base branch and inspected base commit (or offline limitation):
 Stage and central status/documentation revision:
 Human-authorized later-stage exception, if any:
 One observable outcome:
@@ -59,6 +90,7 @@ The implementing contributor supplies a reviewable diff and results. Review shou
 ```text
 Task / stage / scope exception:
 Changed repositories and revisions (or clearly marked uncommitted work):
+Task branches, latest fetched/integrated base commits and push status:
 Observable result and affected contracts:
 Checks actually run, environment and results:
 Fixtures/mocks versus real-device evidence:

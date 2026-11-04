@@ -14,7 +14,7 @@ Read the target repository's `AGENTS.md`, `docs/orientation.md` and `docs/workfl
 
 ## Obtain all six repositories
 
-Git and repository access are required. These SSH URLs come from inspected `origin` remotes; configure authentication locally and never include keys or tokens in documentation. All six inspected local branches and remote HEAD references are `main`.
+Git and repository access are required. These SSH URLs come from inspected `origin` remotes; configure authentication locally and never include keys or tokens in documentation. The inspected default branch is `main` in all six repositories; contributions use separate task branches.
 
 From a new parent directory:
 
@@ -27,7 +27,7 @@ git clone git@github.com:motion-tennis/motion-tennis-controller.git
 git clone git@github.com:motion-tennis/debug-units.git
 ```
 
-For existing checkouts, inspect each repository's `git status --short`, current instructions and branch configuration. Preserve uncommitted work; setup does not require reset or cleanup. The sibling layout is convenient for local cross-repository checking, not a runtime deployment requirement.
+For existing checkouts, inspect each repository's `git status --short`, current instructions and branch configuration. Follow the [mandatory branch and remote workflow](contribution-workflow.md#git-branch-and-remote-workflow): select a dedicated task branch before editing, fetch and integrate current remote `main` and remote task-branch updates before every authorized push, resolve conflicts and rerun relevant checks. Preserve uncommitted work; setup does not require reset or cleanup. The sibling layout is convenient for local cross-repository checking, not a runtime deployment requirement.
 
 ## Checks available now
 
