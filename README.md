@@ -42,7 +42,7 @@ These links derive from the inspected Git remotes. All local checkouts track `or
 | [motion-tennis-controller](https://github.com/motion-tennis/motion-tennis-controller) | IMU measurements, transaction timing, LED and haptic feedback | Four wireless battery ESP32 handhelds; S3 reference proposed |
 | [motion-tennis-camera-tracking](https://github.com/motion-tennis/motion-tennis-camera-tracking) | Continuous webcam pose estimation and identity tracking | Windows RTX 5080 laptop; RTMO-m reference proposed |
 | [motion-tennis-physics-engine](https://github.com/motion-tennis/motion-tennis-physics-engine) | Temporal fusion, hit decisions, sole ball-state calculations | Available Raspberry Pi 3 Model B |
-| [motion-tennis-game-engine](https://github.com/motion-tennis/motion-tennis-game-engine) | Committed match-state service and separate Unity visualization/UI | Windows laptop; Unity/C# selected, native C++20 state service proposed |
+| [motion-tennis-game-engine](https://github.com/motion-tennis/motion-tennis-game-engine) | C# committed match-state service and separate Unity visualization/UI | Windows laptop; C# service and Unity/C# client selected |
 | [debug-units](https://github.com/motion-tennis/debug-units) | Offline trace audit now; live collection, viewer and fault harness planned | Windows analysis host; bounded emitters on all devices |
 
 Tracking, state service, visualization and debug collection share the laptop as separate software components. Webcam-first 2.5D and Windows deployment supersede the earlier Kinect/Linux assumptions. Kinect/depth/stereo remains a later true-3D option, not a prerequisite. See [tracking integration](docs/tracking.md).

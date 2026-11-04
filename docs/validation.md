@@ -157,6 +157,16 @@ Validation for the status transition: the documentation checker passed across al
 
 ## Unity game-engine selection, 2026-10-29
 
-The user selected Unity for the game engine. [ADR 0012](adr/0012-unity-game-engine.md) records Unity/C# for the Windows game client, renderer and UI, superseding the earlier SDL3 proposal. Shared requirements, architecture, setup, roadmap and game-repository guidance now reflect this decision. The proposed native C++20 committed-state service stays separate; Pi authority, required query/response, atomic commits, timing and the accepted v0.3 schema/profile are preserved. Unity editor/package versions and runtime validation remain open.
+The user selected Unity for the game engine. [ADR 0012](adr/0012-unity-game-engine.md) records Unity/C# for the Windows game client, renderer and UI, superseding the earlier SDL3 proposal. Pi authority, required query/response, atomic commits, timing and the accepted v0.3 schema/profile are preserved. Unity editor/package versions and runtime validation remain open.
+
+## C# committed-state service selection, 2026-11-03
+
+The user selected C# for the Windows committed-state service as well as the Unity client. The service remains a separate process so state queries and commits stay independent of rendering and GPU work. This supersedes the earlier native C++20/CMake service proposal. Pi authority, wire contract, session/epoch fences and atomic commit semantics are unchanged. The .NET/runtime target and packages remain to be verified and pinned during implementation; no runtime or test evidence is added by this decision.
+
+## S1 headless C# state store, 2026-11-03
+
+The game-engine repository now contains a .NET 8 in-memory store and deterministic mock-Pi harness. `dotnet run --project tests/MotionTennis.GameState.Tests/MotionTennis.GameState.Tests.csproj` passed 14/14 host checks for an eight-query batch, atomic updates/rollback, idempotent and conflicting retries, version/session/epoch fences, writer reconciliation, bounded retention, periodic-only updates and score/event invariants. This is component evidence only; there is no generated C# Protobuf boundary, socket service, Unity renderer or integrated Pi runtime, and the shared S1 gate remains open.
+
+The local documentation checker ran but reported 16 stale S0 evidence hashes. Its evidence checker compares Windows path separators and CRLF file bytes directly with the saved POSIX/LF manifest. Recomputing its 15-source inventory with POSIX paths and LF-normalized bytes yields zero mismatches. This host portability issue leaves the checker run non-passing; the historical S0 evidence report was not rewritten.
 
 The documentation checker passed across 73 Markdown files in all six repositories, including mapped links, contract-evidence freshness and progress-view consistency. Git whitespace checks passed in both changed repositories. Mermaid changes were limited to renderer labels and checked structurally; no Mermaid renderer was available. No Unity project, runtime test or hardware measurement was added, and S1 remains active and incomplete.

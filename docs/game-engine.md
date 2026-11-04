@@ -4,9 +4,9 @@
 
 **Agreed design:** a doubles 2v2 game inspired by Wii Tennis, with automatic avatar movement, stationary human participants, gesture-driven toss/overhead serve, normal tennis scoring and two team-relative views. The host is the Windows laptop with RTX 5080. See the canonical [gameplay rules](gameplay.md), [assignment contract](player-assignment.md) and [ADR 0010](adr/0010-doubles-auto-movement-gameplay.md).
 
-**Agreed engine selection:** implement the Windows game client, renderer and UI in **Unity with C#**, as requested on 2026-10-29 in [ADR 0012](adr/0012-unity-game-engine.md). This replaces the C++/SDL3 renderer proposal. The separate native C++20/CMake committed-state service remains a proposed implementation. Unity editor version, render pipeline, scripting backend and package versions must be verified and pinned during implementation. A Unity scene does not change the calibrated 2.5D tracking model or establish true 3D human tracking. Windows remains the primary deployment.
+**Agreed engine and language:** implement the Windows game client, renderer, UI and committed-state service in **C#**, using Unity for the game client and presentation. The user confirmed C# for the state service on 2026-11-03; [ADR 0012](adr/0012-unity-game-engine.md) records the decision. Keep the headless state service in a separate process from Unity rendering so frames, GPU inference and presentation cannot block state queries or commits. Unity editor version, .NET/runtime target, render pipeline, scripting backend and package versions must be verified and pinned during implementation. A Unity scene does not change the calibrated 2.5D tracking model or establish true 3D human tracking. Windows remains the primary deployment.
 
-**Implemented:** documentation only; no game state service, match-rule runtime, renderer or gameplay tests exist yet.
+**Implemented:** an S1 in-memory C# state-store library with deterministic mock-Pi host checks in `motion-tennis-game-engine`; no network state service, generated C# Protobuf codec, match-rule runtime, renderer or integrated gameplay tests exist yet. See the component's [S1 state-store handoff](https://github.com/motion-tennis/motion-tennis-game-engine/blob/main/docs/s1-state-store.md). Its local checks do not establish wire interoperability or shared S1 acceptance.
 
 ## Match-state contract gap
 
