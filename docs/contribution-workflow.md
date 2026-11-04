@@ -34,14 +34,25 @@ git rev-parse origin/main
 
 ### Before every push
 
+Only the project user, acting as requirements engineer, may push remote `main`. Agents may push task branches when authorized and may prepare an explicitly requested local merge as described below. The user must also apply the fresh-fetch, integration and validation checks before pushing `main`.
+
 1. Confirm that committing/pushing is authorized, the current branch is still the intended task branch, and the destination remote/ref is correct. Existing authorization is sufficient; do not ask again for routine synchronization. Branch creation, editing or this workflow alone does not authorize publication. Prepare reviewed, scoped commits when authorized, and require a clean index/worktree with no unfinished Git operation before integration.
 2. Fetch again with `git fetch --prune origin`, even if a pull or fetch succeeded earlier in the task. Compare the recorded base with the new `origin/main` and inspect incoming changes with `git log --oneline HEAD..origin/main` and `git diff HEAD...origin/main`. Also inspect `origin/<task-branch>` if it exists; another contributor may have pushed to it. If the base was rewritten or a previously published task branch disappeared, investigate before proceeding rather than silently replacing remote work.
 3. Integrate missing remote task-branch commits first, then the newest `origin/main`, into the task branch. Prefer `git merge origin/<task-branch>` (when it exists) and `git merge origin/main`; these preserve shared history. Rebase is an option only for commits known to be unpublished and unshared. Do not rewrite published/shared commits or force-push unless explicitly authorized.
 4. Resolve conflicts by reading both changes and preserving their intended behavior. Do not blindly accept all of `ours` or `theirs`. Ask for clarification only when the intended combined behavior is genuinely ambiguous; otherwise complete the resolution, stage the resolved files and finish the merge or permitted rebase. Rerun relevant checks against the combined result, including `git diff --check`, and review the final diff. No push with unresolved conflicts, failed required checks or an unfinished Git operation.
 5. Verify that `git merge-base --is-ancestor origin/main HEAD` exits successfully. If the remote task branch exists, require `git merge-base --is-ancestor origin/<task-branch> HEAD` to succeed too. These checks confirm that the commit to push includes both fetched tips. Record the integrated base revision and validation results in the handoff.
-6. Push only the task branch using an explicit destination, for example `git push -u origin HEAD:refs/heads/task/short-description`. Never push directly to `main` without explicit authorization; normal integration is through the project's review/pull-request process. A non-fast-forward rejection means fetch, inspect, integrate and validate again. Never bypass it with a force push.
+6. Agents push only the task branch using an explicit destination, for example `git push -u origin HEAD:refs/heads/task/short-description`. Remote `main` pushes are reserved to the project user. A non-fast-forward rejection means fetch, inspect, integrate and validate again. Never bypass it with a force push.
 
-A fetch verifies a point in time, not a lock on the remote. If `main` advances during validation or review, repeat synchronization and affected checks before the next push and before merging the pull request. Do not claim server-enforced freshness or branch protection unless it has actually been configured and verified. This workflow does not install hooks or change repository settings.
+A fetch verifies a point in time, not a lock on the remote. If `main` advances during validation or review, repeat synchronization and affected checks before the next push or integration into `main`. Do not claim server-enforced freshness or branch protection unless it has actually been configured and verified. This workflow does not install hooks or change repository settings.
+
+### Local merge for the requirements engineer
+
+On the user's explicit request, agents may merge validated task branches into local `main` and hand off for the user to push; a pull request is not required for this path. File edits still belong on task branches.
+
+1. Require clean worktrees and no unfinished Git operation. Fetch and synchronize the task branch as above. If fetching fails, an explicitly requested local merge may proceed from the known local revisions, but report remote freshness as unverified; the user must successfully fetch, integrate any new remote commits and validate before pushing.
+2. Check whether local `main` has commits missing from the task branch. If it does, merge `main` into the task branch, preserve those commits, resolve conflicts there and rerun the relevant checks. Never reset local `main` to discard its work.
+3. Require `git merge-base --is-ancestor main <task-branch>` to succeed. Switch to `main` and run `git merge --ff-only <task-branch>`. If the fast-forward is refused or `main` is occupied by another task/worktree, inspect and reconcile safely instead of forcing the update.
+4. Verify the resulting `main` commit and clean status. Hand off the commit, checks and remote freshness to the user without pushing remote `main`.
 
 ## Task brief
 

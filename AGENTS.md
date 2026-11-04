@@ -51,7 +51,8 @@ Follow the mandatory [shared Git workflow](docs/contribution-workflow.md#git-bra
 - Fetch the verified remote before starting and base new task branches on its current `main`. If fetching fails, record the failure and known local base before continuing local work; remote freshness remains unverified and pushing must wait for successful synchronization.
 - Before every authorized push, fetch again, inspect changes to remote `main` since the recorded base, and integrate the latest remote `main` and any updates to the remote task branch. A previous pull or a clean worktree does not establish freshness.
 - Prefer merges to preserve published history. Resolve conflicts by preserving the intended behavior of both changes, ask only when intent is ambiguous, and rerun the relevant checks after integration. Verify that both fetched remote tips are ancestors of the commit to push when the remote task branch exists.
-- Push explicitly to the task branch. Do not force-push, rewrite shared history or push directly to `main` without explicit authorization. A rejected push requires another fetch, integration and validation, not an overwrite. Existing commit/push authorization remains valid; these checks do not grant it or require it to be requested again.
+- Agents push explicitly to the task branch when authorized. Do not force-push or rewrite shared history without explicit authorization. A rejected push requires another fetch, integration and validation, not an overwrite. Existing commit/push authorization remains valid; these checks do not grant it or require it to be requested again.
+- Only the project user, acting as requirements engineer, may push remote `main`. Agents may merge validated task branches into local `main` when explicitly requested, then hand off for the user's push. This does not permit file edits directly on `main`.
 
 ## Implementation evidence
 
