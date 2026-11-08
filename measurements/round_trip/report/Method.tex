@@ -1,0 +1,21 @@
+% =========================================================================
+% METHOD 
+% =========================================================================
+\section{Method}
+
+\subsection{Description of the Measurement Method}
+The following method and steps were performed to gather measurement data.
+\begin{enumerate}
+    \item Master node software transmits a small packet in a loop. The next package is sent when the previous came back. This was used to fulfill R-RT02.
+    \item Slave node receives the data and immediately transmits it back (R-RT03).
+    \item The master records the time from transmission to reception of the same packet (round-trip time) in a memory array (R-RT04). The array was exported to an CSV file.
+    \item A fixed timeout was used to in case no data was received (R-RT06).
+\end{enumerate}
+
+\subsection{Measurement Setup}
+
+% \begin{figure}[H]
+% \centering
+% \includegraphics[width=0.75\textwidth]{./../pictures/Measurement_Setup.jpg}
+% \caption{Measurement setup.}
+% \end{figure}

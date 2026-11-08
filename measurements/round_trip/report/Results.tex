@@ -1,0 +1,51 @@
+% =========================================================================
+% RESULTS
+% =========================================================================
+\section{Herleitung und Definition der Forschungsfragen}
+In this section the results of the measurements with the specified conditions are presented.
+
+
+\subsection{Normal Operation}
+These are the results of the measurements with normal operation. Normal operation means that the master node and the slave node are connected to the same network and there is no heavy CPU load. The measurements were performed with a fixed timeout of x ms.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../results/messung.png}
+\caption{Measurement results for 50000 measurements under normal conditions.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../results/messung.png}
+\caption{Measurement results for 500000 measurements under normal conditions.}
+\end{figure}
+
+\subsection{High Network Load}
+These are the results of the measurements with high network load. To simulate a high network load the tool \texttt{iperf} was used in combination with another client which was a notebook connected to the same network.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../results/messung.png}
+\caption{Measurement results for 50000 measurements under high network load.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../results/messung.png}
+\caption{Measurement results for 500000 measurements under high network load.}
+\end{figure}
+
+\subsection{High CPU Load}
+These are the results of the measurements with high network load. To simulate a high network load the tool \texttt{prime95} was used. This tool calculates prime numbers to generate load on the CPU. The tool was run on the master node.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../results/messung.png}
+\caption{Measurement results for 50000 measurements under CPU load.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../results/messung.png}
+\caption{Measurement results for 500000 measurements under CPU load.}
+\end{figure}

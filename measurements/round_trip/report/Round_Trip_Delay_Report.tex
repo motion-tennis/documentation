@@ -1,0 +1,48 @@
+%!TEX program = lualatex
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{fontspec}
+\usepackage[german, bidi=basic, provide=*]{babel}
+\babelfont[german]{rm}{Noto Sans}
+\babelfont{rm}{Noto Sans}
+
+%\usepackage{booktabs}
+%\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{tabularray}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{graphicx}
+
+% Technisches Farbdesign mit starkem Primär-Rot (angelehnt an das Beispiel)
+\definecolor{techred}{RGB}{186, 24, 27}       % Kräftiges, edles Rot für den Header
+\definecolor{rowlight}{RGB}{240, 242, 245}   % Sehr dezentes, neutrales Hellgrau für den Zeilenwechsel
+\definecolor{rowdark}{RGB}{255, 255, 255}    % Reines Weiß für abwechselnde Zeilen
+\definecolor{accenthl}{RGB}{250, 235, 235}   % Sehr dezenter rötlicher Ton für die Forschungsfrage-Hervorhebung
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=techred,
+    urlcolor=techred
+}
+
+\begin{document}
+
+\input{Cover.tex}
+
+\newpage
+
+\input{Method.tex}
+
+\newpage
+
+\input{Results.tex}
+
+% \newpage
+
+% \input{Literatur.tex}
+
+\end{document}
