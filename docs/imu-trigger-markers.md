@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Controller](controller.md) · [Timing](timing.md) · [Debugging](debugging.md) · [IMU selection](imu-selection.md)
 
-Decision date: 2026-10-25. **Agreed design:** use MPU-6050 over I²C with Zephyr for the first prototype, retain the continuous 200 Hz controller stream, and develop a configurable hardware acceleration-threshold interrupt as a diagnostic marker across the complete processing path. **Proposed:** the detailed correlation and instrumentation rules below. **Open:** whether the selected MPU-6050 motion detector satisfies the intended threshold semantics and timing evidence. **Implemented:** documentation only; no marker firmware, live collection, marker-aware viewer or marker audit exists. The prototype choice is recorded in [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md); it does not establish validated driver or marker functionality.
+Decision date: 2026-10-25. **Agreed design:** use MPU-6050 over I²C with Zephyr for the first prototype, retain the continuous 200 Hz controller stream, and develop a configurable hardware acceleration-threshold interrupt as a diagnostic marker across the complete processing path. **Proposed:** the detailed correlation and instrumentation rules below. **Open:** whether the selected MPU-6050 motion detector satisfies the intended threshold semantics and timing evidence. **Implemented:** bounded offline marker-link conformance in `debug-units`, with synthetic evidence only; no marker firmware, live collection or marker-aware viewer exists. The prototype choice is recorded in [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md); it does not establish validated driver or marker functionality.
 
 ## Continuous samples and independent markers
 
@@ -76,6 +76,6 @@ Record sensor/board revision, pinned driver/RTOS/HAL revisions, I²C configurati
 
 ## Implementation and acceptance
 
-Extend the controller trace emitter and debug collector/viewer/auditor before claiming this feature works. The existing offline checker tolerates additional stage records but does not validate trigger links or compute the new metrics. No gameplay codec change is required for this diagnostic design.
+Extend the controller trace emitter and debug collector/viewer/auditor before claiming this feature works. The offline checker validates the bounded marker-link profile; complete downstream path validation and the new latency metrics remain deferred. No gameplay codec change is required for this diagnostic design.
 
 Validate concurrent continuous sampling and threshold interrupts; true IRQ-to-handler latency; exact sample links across boundary races; older replies arriving after a trigger; simultaneous controllers; multiple triggers per sample; threshold chatter and haptic self-triggering; packet loss and late results; re-pairing/reboot; trace-buffer overflow and missing marker/link records. Compare stream cadence, transaction contents/order, scheduler policy and complete outcome counts with marker instrumentation enabled/disabled under controlled input, and measure observation overhead. A stopped collector must not alter sampling or feedback. Use GPIO/logic-analyzer evidence and publish unresolved cases before claiming a full-path trace.
