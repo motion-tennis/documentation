@@ -1,0 +1,7 @@
+Auswertung:
+  Gesendet: 500; empfangen: 500; Timeouts: 0; abgebrochene Messungen: 0
+  Ohne gueltige Antwort: 0/500 (0.00 %; beinhaltet Abbrueche)
+  RTT [ms]: min=3.685, Mittel=4.761, Median=4.261, p95=7.334, max=18.212
+  Mittlere absolute Differenz aufeinanderfolgender gueltiger RTTs: 1.119 ms
+  Mittelwert RTT/2: 2.380 ms (nur Schaetzung bei symmetrischen Wegen, keine Einwegmessung).
+  RTT enthaelt Netzwerk, WLAN, Betriebssystem und Echo-Verarbeitung.

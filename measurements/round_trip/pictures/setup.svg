@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="300" viewBox="0 0 1000 300">
+<rect width="1000" height="300" fill="#f4f7fb"/>
+<g font-family="Arial,sans-serif" text-anchor="middle" fill="#15304c">
+<text x="500" y="40" font-size="24" font-weight="bold">Roundtrip-Messung · schematischer Aufbau</text>
+<g fill="white" stroke="#39658c" stroke-width="2">
+<rect x="30" y="100" width="240" height="100" rx="12"/>
+<rect x="380" y="100" width="240" height="100" rx="12"/>
+<rect x="730" y="100" width="240" height="100" rx="12"/>
+<path d="M270 150H380 M620 150H730"/>
+</g>
+<text x="150" y="137" font-size="21">Raspberry Pi 3</text>
+<text x="150" y="170" font-size="16">Master · Python · RTT-Array</text>
+<text x="500" y="137" font-size="21">Router / Access Point</text>
+<text x="500" y="170" font-size="16">Gleiches lokales Netzwerk</text>
+<text x="850" y="137" font-size="21">ESP32-C3 Mini</text>
+<text x="850" y="170" font-size="16">Slave · UDP-Echo :5005</text>
+<text x="325" y="130" font-size="14">Ethernet</text>
+<text x="675" y="116" font-size="14">WLAN</text>
+<text x="675" y="136" font-size="14">2,4 GHz</text>
+<text x="500" y="245" font-size="18">Pi → 32 Byte → ESP → identische 32 Byte → Pi</text>
+<text x="500" y="275" font-size="14">Für R-RT01 zusätzlich ein Foto des realen Aufbaus aufnehmen.</text>
+</g></svg>

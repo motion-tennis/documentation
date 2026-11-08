@@ -7,7 +7,9 @@ to ../results using the same base name as the CSV file.
 Additionally exports two LaTeX longtblr tables (one row per data set) to
 ../results: rtt_completeness.tex and rtt_statistics.tex.
 
-Expected CSV columns: sequence, sent_monotonic_ns, rtt_ms, status
+Expected CSV columns: sequence, setup, status, rtt_ns, rtt_us,
+ignored_packets. The delay is taken from rtt_ns and converted to ms.
+Files without the required columns (old format) are skipped.
 Status handling: "ok" = received, "timeout" = timeout, any other status =
 aborted measurement. Only "ok" rows contribute to the delay statistics.
 """
@@ -26,6 +28,12 @@ DATA_DIR = BASE_DIR / "data"
 RESULTS_DIR = BASE_DIR / "results"
 
 BIN_WIDTH_MS = 0.25
+NS_PER_MS = 1e6
+REQUIRED_COLUMNS = {"status", "rtt_ns"}
+# Files in the data folder that are not analysed (old format / test run)
+IGNORED_FILES = {"messung.csv", "test.csv"}
+# Data set listed first in the tables, remaining ones follow alphabetically
+BASELINE_NAME = "normal"
 DPI = 200
 SHOW_PLOTS = True  # open the figures in the GUI (e.g. Spyder) after saving
 
@@ -39,18 +47,24 @@ GRID_COLOR = "#D9D9D9"
 
 
 def load_measurement(csv_path):
-    """Return (valid round-trip delays in ms, status counts) of one CSV file."""
+    """Return (valid delays in ms, status counts) of one CSV file.
+
+    Returns None if the file does not have the required columns.
+    """
     values = []
     statuses = Counter()
     with csv_path.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            status = row.get("status", "").strip().lower()
+        reader = csv.DictReader(handle)
+        if not REQUIRED_COLUMNS.issubset(reader.fieldnames or []):
+            return None
+        for row in reader:
+            status = row["status"].strip().lower()
             statuses[status] += 1
             if status != "ok":
                 continue
             try:
-                values.append(float(row["rtt_ms"]))
-            except (KeyError, ValueError):
+                values.append(int(row["rtt_ns"]) / NS_PER_MS)
+            except ValueError:
                 continue
     return values, statuses
 
@@ -212,7 +226,11 @@ def write_longtblr(output_path, caption, label, header, rows):
 
 
 def main():
-    csv_files = sorted(DATA_DIR.glob("*.csv"))
+    csv_files = sorted(
+        (path for path in DATA_DIR.glob("*.csv")
+         if path.name not in IGNORED_FILES),
+        key=lambda path: (path.stem != BASELINE_NAME, path.stem),
+    )
     if not csv_files:
         print(f"No CSV files found in {DATA_DIR}")
         return
@@ -220,7 +238,11 @@ def main():
     completeness_rows = []
     statistics_rows = []
     for csv_path in csv_files:
-        values, statuses = load_measurement(csv_path)
+        measurement = load_measurement(csv_path)
+        if measurement is None:
+            print(f"Skipping {csv_path.name}: unexpected CSV format")
+            continue
+        values, statuses = measurement
         if not values:
             print(f"Skipping {csv_path.name}: no valid samples")
             continue
