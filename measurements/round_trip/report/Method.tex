@@ -1,0 +1,30 @@
+% =========================================================================
+% METHOD 
+% =========================================================================
+\section{Method}
+
+\subsection{Description of the Measurement Method}
+The following method and steps were performed to gather measurement data.
+\begin{enumerate}
+    \item Master node software transmits a small packet in a loop. The next package is sent when the previous came back. This was used to fulfill R-RT02.
+    \item Slave node receives the data and immediately transmits it back (R-RT03).
+    \item The master records the time from transmission to reception of the same packet (round-trip time) in a memory array (R-RT04). The array was exported to an CSV file.
+    \item A fixed timeout was used to in case no data was received (R-RT06).
+\end{enumerate}
+
+\subsection{Description}
+A Raspberry Pi acts as the master, while a ESP32 is a UDP echo slave. A 32-byte packet is echoed back unchanged each time. Only one request is active at any given time. After receiving a valid response, the next request starts without any intentional delay. Following a timeout, the process continues with a new sequence number; there are no retries for the same request. UDP was chosen to ensure that packet loss remains explicitly visible. In case of an Error the nodes will not retry the request, but instead continue with the next sequence number. This is to ensure that the round-trip time is not influenced by retries. This error handling was implemented to fulifll requirement R-RT06. The master node records the round-trip time for each packet and stores it in an array. After a predefined number of measurements, the data is exported to a CSV file for further analysis.
+
+\subsection{Measurement Setup}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../pictures/setup_fixed.png}
+\caption{Schematic measurement setup.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{./../pictures/Real_Setup_cropped.jpeg}
+\caption{Picture of the real setup showing every component connected.}
+\end{figure}
