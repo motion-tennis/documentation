@@ -56,6 +56,7 @@ Tracking, state service, visualization and debug collection share the laptop as 
 | Devices and data flow | [Master plan](docs/master-plan.md), [architecture](docs/architecture.md), [hardware](docs/hardware.md), [networking](docs/networking.md), [external AP versus Pi hotspot](docs/networking.md#external-ap-versus-pi-hotspot-comparison) |
 | Component design | [Controller](docs/controller.md), [tracking](docs/tracking.md), [physics](docs/physics.md), [game engine](docs/game-engine.md) |
 | S0 evidence and reproduction | [Technical baseline, checks, assumptions and component handoffs](docs/s0-baseline.md) |
+| Assignment design report | [M3 system design, transaction budgets, fault hypothesis, integration tests and Gate 2 review](docs/m3-system-design-integration-tests.md) |
 | Shared contracts | [Protocol](docs/protocol.md), [Protobuf schema](spec/motion.proto), [reference profile](spec/reference-profile.json), [coordinate systems, calibration, and clocks](docs/coordinates-and-time.md) |
 | Measurements | [Timing requirements and methodology](docs/timing.md), [independent IMU trigger markers](docs/imu-trigger-markers.md) |
 | Prototype IMU | [Selected MPU-6050/Zephyr prototype, threshold interrupts and 200 Hz validation](docs/imu-selection.md) |
