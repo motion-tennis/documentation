@@ -11,9 +11,9 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. The m
 
 [![Project stage dashboard](assets/project-progress.svg)](docs/project-status.md)
 
-**S1 — Isolated component slices** · Active, incomplete · Evidence reviewed **2026-10-26**.
+**S1 — Isolated component slices** · Active, incomplete · Evidence reviewed **2026-11-11**.
 
-**Accepted core gates: 1/7** · **Active gate checklist: 0/7**. These count reviewed gates and checklist items, not overall completion.
+**Accepted core gates: 1/7** · **Active gate checklist: 2/7**. These count reviewed gates and checklist items, not overall completion.
 
 **Next checkpoint:** Deliver the controller's bounded local acquisition and safe-output slice with pinned board/Zephyr/toolchain inputs and explicit synthetic versus device evidence.
 
