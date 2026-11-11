@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Master plan](master-plan.md) · [Network](networking.md)
 
-**User-confirmed:** Raspberry Pi 3 Model B; Windows laptop with RTX 5080; four wireless battery controllers required; **MPU-6050 over I²C with Zephyr for the first prototype**; ESP32 model still open; Elgato Facecam or another webcam considered. **Proposed:** the remaining reference parts and connections below. Exact MPU-6050 breakout and Zephyr/HAL versions remain open. No purchases, electrical design approval, hardware inventory inspection or bench tests were performed.
+**User-confirmed:** Raspberry Pi 3 Model B; Windows laptop with RTX 5080; an available working Xbox Kinect reported on 2026-11-11; four wireless battery controllers required; **MPU-6050 over I²C with Zephyr for the first prototype**; ESP32 model still open; Elgato Facecam or another webcam considered. **Proposed:** the remaining reference parts and connections below. Exact MPU-6050 breakout and Zephyr/HAL versions remain open. No purchases, electrical design approval or hardware inventory inspection were performed for this reference. The Kinect report and historical local test evidence are distinguished below.
 
 ## Reference bill of materials
 
@@ -17,6 +17,7 @@
 | 4, proposed power assembly | Protected 1S rechargeable Li-ion/LiPo pack, nominal 1,200 mAh; charger with power-path management, switch and regulated supply | Reference capacity only; choose compliant assembled parts and a power design matched to board/motor peaks. Cell must never connect directly to a 3.3 V rail. Runtime is measured, not inferred from capacity alone |
 | 1, variant A baseline | Dedicated configurable access point with wired LAN/switch | Compare against variant B using Pi 3 B onboard hotspot; four controller stations on quiet legal 2.4 GHz 20 MHz, laptop wired in both; record both actual radio configurations |
 | 1, to validate | Webcam capable of 1080p60 at actual whole-body playing distance | Prefer fixed mounting and controllable exposure; exact Facecam generation matters; see tracking stack |
+| 1, working by user report | Xbox Kinect; the local test harness identifies Kinect v2 / Xbox One with a PC adapter | Available for a future separately scoped adapter; historical RGB/depth/IR checks do not establish tracked-person or four-player tracking acceptance |
 | As needed | Ethernet cables and laptop adapter; rigid camera mount; calibration target | Verify link speed, USB topology and full player visibility |
 | 1 set, measurement | Logic analyzer, safe signal leads/common reference, optional photodiode/vibration sensor/light barrier | Compare GPIO and actual electrical outputs; characterize reference uncertainty |
 
@@ -54,6 +55,14 @@ Disable Wi-Fi modem sleep during active low-latency play in the selected Zephyr 
 A close-up webcam's 1080p60 label does not establish usable focus for four whole bodies several metres away. The tracking-stack page distinguishes Facecam/MK.2 and Facecam 4K mode-dependent focus specifications. Before purchase/final selection, verify sharp wrists/ankles across the entire lane layout, exposure under motion, full-frame field of view, sustainable negotiated frame rate and capture timestamps. Avoid wide-angle distortion or software mirroring that is not represented in calibration.
 
 First deployment is a calibrated 2.5D plane/lane model. True metric 3D needs a separately validated stereo/depth/multi-view solution; Kinect v2 is retained only as a possible later alternative. See [tracking stack and sources](tracking-stack.md) and [coordinate calibration](coordinates-and-time.md).
+
+### Available Kinect and evidence boundary
+
+On 2026-11-11, the user reported that a working Xbox Kinect is available for future work. The local, unversioned `testenv/README.md` identifies the tested device as Kinect v2 / Xbox One with a PC adapter. These are separate evidence sources: the user's current availability report and the harness's historical device/test record.
+
+The harness records successful RGB, depth and infrared stream checks on 2026-10-29, including a 120-second rendering test with no rendering errors. It records body-data frames but no detected person; live skeleton rendering and tracked-person quality were therefore not established. This S1 task does not open the sensor or add new hardware measurements. The historical harness is outside the six versioned repositories and is not a tracking-runtime integration result.
+
+The current S1 adapter uses recorded/synthetic observations independently of a physical camera. Kinect capture, a verified body-tracking backend, calibration, timestamp semantics and compatibility with the shared pose contract need a separate bounded task. Hardware availability does not replace the webcam-first 2.5D baseline, change the accepted schema/profile or release a later shared stage.
 
 ## Hardware acceptance gates
 

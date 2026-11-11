@@ -74,6 +74,8 @@ Single-view image observations define camera rays. A plane constraint supplies a
 
 A later true-3D profile must select and validate a depth or calibrated multi-view sensor arrangement, synchronize exposures as required, establish a metric world transform, measure occlusion/error behavior, and introduce an explicit protocol representation for depth-backed joints. Kinect v2 remains a possible separate adapter, with a verified skeleton backend and compatible host. `libfreenect2` supplies sensor access/registration, not body tracking by itself; see the [upstream project](https://github.com/OpenKinect/libfreenect2). Do not label the first 2.5D release as measured 3D tracking.
 
+The user reported an available working Xbox Kinect on 2026-11-11. The [hardware evidence note](hardware.md#available-kinect-and-evidence-boundary) distinguishes that report from historical local RGB/depth/IR tests, which did not observe a tracked person. This makes a future Kinect adapter possible to investigate; the current S1 recorded/synthetic adapter and webcam-first 2.5D baseline remain the authorized scope.
+
 ## Implementation and acceptance order
 
 Follow the [shared stages](project-stages.md), [current release state](project-status.md) and [tracking workflow](https://github.com/motion-tennis/motion-tennis-camera-tracking/blob/main/docs/workflow.md). This stack description does not release the full pipeline in one task.
