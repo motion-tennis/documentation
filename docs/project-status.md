@@ -30,9 +30,15 @@ This is the sole mutable stage ledger. Component guides link here rather than ma
 | motion-tennis-camera-tracking | Documentation, contract review and recorded-input S1 handoff; no capture/inference runtime | Build the recorded-input adapter and identity/time/quality rejection fixtures. |
 | motion-tennis-physics-engine | Documentation, producer-side contract review and deterministic S1 core handoff; no runtime service | Build a deterministic minimal batch core with fake adapters, periodic work, ordering and complete candidate rollback. |
 | motion-tennis-game-engine | Documentation, consumer review, and an in-memory C# S1 store with deterministic mock-Pi host checks; no network service, generated C# codec or renderer | Review the local S1 evidence and close the typed-to-v0.3 fixture/identity handoff; live transport and Unity rendering remain later work. |
-| debug-units | Existing offline trace checker, synthetic fixture and nine tests; full-match trace specification, contract review and S1 handoff | Implement bounded offline marker-link conformance first; map/match audit extensions remain separate S1 slices. |
+| debug-units | Offline core, marker, clock-map and pipeline/match-provenance profiles; four synthetic fixtures and 72 passing tests; S1 task-branch evidence added on 2026-11-08 | Review/adopt exporter profiles with controller/physics/game/tracking owners and include evidence in the shared S1 review; live exports and hardware remain later work. |
 
 This table records evidence, not person assignments. Claim a task and its file scope through the existing human coordination channel or review system using the [task template](contribution-workflow.md#task-brief). Do not invent contributor names, deadlines or tickets.
+
+### Local S1 debug evidence — 2026-11-08
+
+The bounded marker-link, clock-map and pipeline/match-provenance slices are implemented on `task/s1-marker-conformance` in `debug-units`, with related documentation and the Windows freshness fix on the same named documentation branch. Bases are debug `62d4cb3` and documentation `3260994`; implementation/review and local commits are complete. The local `debug-units/docs/s1-clock-pipeline.md` handoff and exporter review package records the explicit offline profiles, fixtures, exact base revisions and remaining dependencies. Public remote publication was blocked by automatic approval review pending explicit push authorization; no push occurred. These changes do not alter remote `main` or release a stage.
+
+All 72 debug tests, ten freshness-checker tests and four synthetic CLI fixtures passed. The Windows S0 freshness failure was repaired using portable path identities and LF/CRLF text handling, with substantive changes and path collisions still rejected. Historical S0 evidence and all contract sources are unchanged. The full local documentation check passes; unavailable component checkouts remain skips. This is synthetic offline evidence, not validated real exports, clock fitting, hardware timing, complete tennis rules or a running game. Producer-owner review and the other component S1 gates remain open.
 
 ## Active gate checklist
 
