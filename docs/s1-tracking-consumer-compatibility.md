@@ -1,12 +1,12 @@
 # S1 tracking consumer compatibility
 
-[Project status](project-status.md) · [Tracking contract](tracking.md) · [Clock contract](coordinates-and-time.md#pi-reference-clock-mapping) · [Contribution workflow](contribution-workflow.md)
+[Project status](project-status.md) · [Shared S1 review](s1-review.md) · [Tracking contract](tracking.md) · [Clock contract](coordinates-and-time.md#pi-reference-clock-mapping) · [Contribution workflow](contribution-workflow.md)
 
 ## Task and baseline
 
 The project user authorized a bounded S1 typed tracking input bridge, trace-v1 exporter, validation fixes and reproducible consumer compatibility checks on 2026-11-11. This task uses controlled observations and externally declared clock-map evidence. It does not release S2 or authorize camera acquisition, a Pi clock fitter, live networking, a collector/viewer, complete fusion or a full tennis rule engine.
 
-Work is prepared on `task/s1-tracking-consumer-compatibility`. The starting revisions are:
+Work was prepared on `task/s1-tracking-consumer-compatibility`. The starting revisions are:
 
 | Repository | Baseline |
 | --- | --- |
@@ -47,7 +47,7 @@ The bridge checks required tracked shoulder/hip and playing-arm joints against a
 
 The tracking repository now exports native tracking records through `RecordedPoseAdapter.export_trace()` and its `--format trace-v1` replay option. `tracking_adapter/trace.py` retains per-producer sequences allocated before loss, run-grouped headers, explicit loss notices and source completeness metadata. Old/new session lifecycle timestamps are supplied separately; absent boundaries remain untimed metadata outside the timed event list. Unknown event-placement uncertainty stays unknown rather than borrowing the camera-capture bound. Mixed runs cannot overwrite one another's identity or declared run limits.
 
-The source bounds are four people with seventeen joints, sixteen retained maps, sixty-four retired source/reference identities and sixty-four physics diagnostic records. The tracking exporter retains at most sixty-four timed records, sixty-four untimed metadata records and sixty-four session states. Counter/registry exhaustion has an explicit failure or incompleteness result. A consumer must inspect `tracking_trace.complete_source_diagnostics` and untimed metadata in addition to the generic auditor: a source whose records are all absent cannot be recovered from the surviving sequence numbers alone.
+The source bounds are four people with seventeen joints each, sixteen retained maps, sixty-four retired source sessions, sixty-four retired reference epochs in a separate registry and sixty-four physics diagnostic records. The tracking exporter retains at most sixty-four timed records, sixty-four untimed metadata records and sixty-four session states. Counter/registry exhaustion has an explicit failure or incompleteness result. A consumer must inspect `tracking_trace.complete_source_diagnostics` and untimed metadata in addition to the generic auditor: a source whose records are all absent cannot be recovered from the surviving sequence numbers alone.
 
 ## Reproduction and actual evidence
 
@@ -56,7 +56,7 @@ Run from the tracking checkout with the already provisioned optional codec envir
 ```powershell
 .\.venv-codec\Scripts\python.exe -B -m unittest discover -s tests -v
 .\.venv-codec\Scripts\python.exe -B scripts/check_shared_contract.py
-.\.venv-codec\Scripts\python.exe -B scripts/check_consumer_compatibility.py --report evidence/s1-consumer-compatibility-results.json
+.\.venv-codec\Scripts\python.exe -B scripts/check_consumer_compatibility.py --evidence-date 2026-11-11 --report evidence/s1-consumer-compatibility-results.json
 ```
 
 The C++ build requires the available CMake/MSVC toolchain. The physics component documents its own build and CTest commands. No check installs dependencies, opens a camera or contacts a network service. The ordinary observation adapter remains dependency-free; generated-codec and compiled-consumer checks are development checks with separate prerequisites.
@@ -74,6 +74,8 @@ Host validation on 2026-11-11 used Windows, Python 3.14.3 and the available CMak
 The saved tracking file `evidence/s1-consumer-compatibility-results.json` records the platform/tool environment, exact base revisions with working-tree flags, forty canonical LF source hashes, wire hashes, exercised cases and explicit limits. Base revisions and dirty-tree flags are dated validation-snapshot facts; the source hashes pin the tested content independently of its later commits and publication. The unchanged debug consumer is `84c3c2a`; no `debug-units` implementation change was needed.
 
 Measured host `sizeof` values are 68,968 bytes for `BatchCore`, 18,144 bytes for `TrackingPoseBridge` and 704 bytes for `PoseObservation`. These describe the exercised host layout, not complete process memory, Pi ABI/RAM fit or target-device performance.
+
+The subsequent [shared S1 review](s1-review.md) completes the scoped physics/debug technical receiver reviews and records a [fresh report](../evidence/s1-camera-handoff-results.json) against the clean published implementation revisions. It adds the exact host compiler/architecture context, independent component-suite results and the camera contribution checklist. The original tracking report remains a historical validation snapshot.
 
 ## Remaining scope and next handoff
 
