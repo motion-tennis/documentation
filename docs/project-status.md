@@ -62,6 +62,16 @@ The user requested completion of the physics/debug handoff review and inclusion 
 
 The exercised camera-to-physics and camera-to-debug technical handoffs have no blocking review findings and are complete for S1 controlled fixtures. The generic debug audit must be paired with inspection of tracking completeness/untimed metadata; a tracking-only trace remains insufficient controller measurement evidence. This is an agent technical review authorized by the user, not human acceptance of the shared stage. Other producer adoption and the complete all-component evidence package remain open.
 
+## Course M3 and Mx design reports - 2026-11-17
+
+The course submission is due 19 November 2026 at 23:59 Europe/Vienna. It is separate from the internal S0-S7 implementation stages. On the user's request, the existing M3 design was revised to R5 against the newer M2 F-01-F-21 / NF-01-NF-15 baseline, and a separate Mx R1 integration-debugging concept was prepared. The confirmed team display name is Motion Tennis; report filenames use the established compact MotionTennis token.
+
+- [M3 report source](m3-system-design-integration-tests.md) and [standalone PDF](DRS_M3_MotionTennis.pdf): architecture, transaction/stage budgets, global time, interfaces, twelve integration tests, full requirement traceability and consistency findings.
+- [Mx report source](mx-integration-test-debugging-concept.md) and [standalone PDF](DRS_Mx_MotionTennis.pdf): bench, trace points, diagnostic order, verdict classification, reproducibility and proposed role-owned tool readiness dates.
+- [Preparation and validation handoff](milestone-report-handoff.md): pinned documentation baseline, generation method, review scope and unresolved acceptance decisions.
+
+On 18 November 2026 the project user confirmed Mx team acceptance, available logic analyzer/oscilloscope/photodiodes and assigned hardware responsibility. Mx R2 records the accepted tool/measurement plan, stopping acquisition with Windows-host loss (post-failure evidence remains incomplete), and initial operating limits set under explicit user authorization. M3 R6 aligns the related test/status text; The project user subsequently confirmed M3 as-is on 18 November 2026. M3 and Mx are accepted and course Gate 2 is complete; R7/R3 record this decision. CR-04/09/10 retain the listed implementation/evidence prerequisites; acceptance is not evidence that hardware tests passed. Exact assembly ratings, calibration, protection implementation and hardware/WCET evidence remain execution prerequisites. The report work makes no implementation-stage transition and does not release S2. No runtime code or other component repository was changed by this reporting task.
+
 ## Active gate checklist
 
 **Checklist stage: S1.**
