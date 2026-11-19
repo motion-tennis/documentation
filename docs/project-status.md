@@ -4,7 +4,7 @@
 
 **Active stage: S1 — Isolated component slices.**
 
-**Last evidence review: 2026-11-19.** The project user accepted the [S0 baseline](s0-baseline.md) on 2026-10-26, including the dedicated Pi/PC TCP state channel in ADR 0011. S1 is active. The [current checklist](#active-gate-checklist) records the results of the physics and game regressions and the remaining requirements for S1 acceptance.
+**Last evidence review: 2026-11-19.** The project user accepted the [S0 baseline](s0-baseline.md) on 2026-10-26, including the dedicated Pi/PC TCP state channel in ADR 0011. S1 is active. The [current checklist](#active-gate-checklist) includes the physics and game regressions, their shared mixed-batch fixture and the remaining requirements for S1 acceptance.
 
 This is the sole mutable stage ledger. Component guides link here rather than maintaining separate active-stage flags. Record the exact documentation revision read in each task. A pinned status snapshot supplied with an authorized task is acceptable for an isolated/offline checkout; a stale link or memory is not evidence of a later stage release.
 
@@ -28,8 +28,8 @@ This is the sole mutable stage ledger. Component guides link here rather than ma
 | documentation | Accepted v0.3 contract baseline, generated host codecs, offline semantic oracle/fixtures, resource evidence and documentation/freshness checkers | Keep component slices pinned to the accepted contract and record actual S1 build/test evidence and remaining dependencies. |
 | motion-tennis-controller | Documentation, contract review and S1 acquisition handoff; no firmware/build setup | Build the bounded local acquisition/safe-output slice after actual board/pins and toolchain prerequisites are pinned. |
 | motion-tennis-camera-tracking | Offline adapter and bounded trace-v1 exporter at `5a72519`, with 64 passing Python tests, generated v0.3 codec evidence and completed technical physics/debug handoff review | Camera contribution, pinned commits, tests and resource evidence are included in the [shared S1 review](s1-review.md). No camera-only S1 work remains in this reviewed slice; live capture, inference and transport retain their later gates. |
-| motion-tennis-physics-engine | Deterministic batch core and typed tracking bridge. The repair at `08d59a7` prevents one controller transaction from producing multiple contacts and retains the original terminal feedback. | Exercise the common v0.3 game fixture, including explicit rejected-input accounting and emitted query/commit evidence. |
-| motion-tennis-game-engine | In-memory C# store with active and completed tiebreak counters validated through the unsigned 56-bit limit. All 16 mock-Pi host checks pass at `a3b6eb6`. | Exercise the common v0.3 physics fixture and retain correlated committed events and diagnostics. |
+| motion-tennis-physics-engine | The deterministic batch core retains terminal feedback for duplicate transactions. Its shared v0.3 fixture exports the queried keys, a stale-input rejection and the rebuilt two-decision update. | Emit the correlated query, failure, commit and feedback records required by the shared trace review. |
+| motion-tennis-game-engine | The in-memory C# store validates tiebreak counters through the unsigned 56-bit limit. It accepts the shared physics candidate with explicit rejection accounting and rejects incomplete or reordered batches atomically. | Supply correlated game publication and diagnostic records for the shared trace review. |
 | debug-units | Delivered offline core, marker, clock-map and pipeline/match-provenance profiles at `84c3c2a`; four synthetic fixtures and 72 passing tests; scoped tracking trace handoff technically reviewed | Complete controller/physics/game exporter-profile adoption and their shared S1 evidence; the exercised tracking profile is recorded in the [shared review](s1-review.md). Live collection and hardware remain later work. |
 
 This table records evidence, not person assignments. Claim a task and its file scope through the existing human coordination channel or review system using the [task template](contribution-workflow.md#task-brief). Do not invent contributor names, deadlines or tickets.
@@ -86,6 +86,10 @@ The tested changes were committed as physics `08d59a71704f4fe3272a97c3893465f09b
 | Debug auditor | 72 tests passed. All four synthetic CLI traces passed with zero errors. |
 | Shared documentation and contract | The documentation checker passed across six repositories, along with 32 match-contract tests and 10 evidence-freshness tests. |
 
+## Shared physics and game fixture — 2026-11-19
+
+The [mixed-batch fixture](s1-physics-game-fixture.md) closes the S1 question about rejected inputs at the typed physics/game boundary. Query 2 aged out before submission. The game accounted for its full transaction key, committed queries 1 and 3 as events 0 and 1, and advanced once to version 2 at tick 101. Six negative controls and the identical-retry check passed. The [machine-readable result](../evidence/s1-physics-game-mixed-batch-results.json) pins the tested local sources. The broader trace and review item remains open.
+
 ## Active gate checklist
 
 **Checklist stage: S1.**
@@ -103,7 +107,6 @@ Checked delivery items establish the named bounded implementation and its local 
 ### Remaining S1 work at this review
 
 - **Controller:** the checkout at `8370c26` remains documentation-only. Pin the actual board/pins and Zephyr toolchain, then deliver acquisition, safe-output and failure/overflow evidence under its existing handoff.
-- **Physics and game fixture.** Run both components against the same v0.3 configuration and transaction identities. Include a batch where physics removes an ineligible input. Show that the game accepts the surviving decisions and accounts for the rejected input. The current physics fixture uses a placeholder configuration digest and the game fixture uses a typed JSON fingerprint for retries.
 - **Trace evidence and review.** Have controller, physics and game emit records that can be joined from sample through query, rejection or commit, publication and feedback. Verify native timestamps, map versions and producer completeness with the offline auditor. Collect compatible component revisions, fixture identities, dependency versions, resource bounds and reproduction commands in the shared S1 review. The [camera handoff](s1-review.md) already provides its controlled-input contribution.
 - **Stage decision:** after the remaining work is verified, obtain and record human acceptance of S1 before releasing S2. This checklist update makes no stage decision.
 
