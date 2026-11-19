@@ -101,4 +101,4 @@ Source-backed capacities are documented in the [tracking handoff](https://github
 - [x] Attach a fresh reproducible consumer report, independent component-suite results, dependency/toolchain versions and resource evidence.
 - [x] Include the camera contribution in the shared ledger and review navigation.
 
-No camera-only S1 task remains in this reviewed slice. The shared checklist remains **2/7 delivery/gate items**: controller acquisition/safe outputs, retained physics controller-transaction deduplication, game score-validation repairs, their remaining shared fixtures/emitted-event/profile evidence and the complete all-component review package still need completion. The responsible human must then accept S1 before S2 is released. This camera packet closes neither those tasks nor that stage decision.
+The camera contribution was complete at the 2026-11-11 review. At that point, the shared checklist stood at **2/7 delivery/gate items**. The [current S1 ledger](project-status.md#active-gate-checklist) tracks the subsequent physics and game repairs, shared evidence and stage decision.
