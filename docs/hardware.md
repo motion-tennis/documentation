@@ -25,6 +25,8 @@ The Pi 3B has a 1.2 GHz quad-core CPU, 1 GB RAM and 100BASE-T Ethernet; it is no
 
 The [ESP32-S3 board guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/) and [SoC specification](https://www.espressif.com/en/products/socs/esp32-s3) establish the recommended board family and 2.4 GHz radio. The [IMU assessment](imu-selection.md) and [ADR 0008](adr/0008-mpu6050-zephyr-prototype.md) select MPU-6050/I²C and Zephyr for the first prototype, superseding BMI270/SPI and ESP-IDF. The [reference profile](../spec/reference-profile.json) retains this selection in `webcam-pi3-doubles-v3`; the 200 Hz stream and timing targets remain unchanged, while [ADR 0011](adr/0011-full-match-contract-and-state-stream.md) separately versions the match-state interface. Later production alternatives remain subject to measured evidence. The [DRV2605L documentation](https://www.ti.com/product/DRV2605L) covers ERM/LRA drive; select and characterize an actual actuator before setting drive limits.
 
+The [Zephyr evaluation setup](zephyr-eval-setup.md) records a separate toolchain evaluation on a Waveshare ESP32-S3-Zero: a custom board definition, WSL 2 host setup, build and flash. It does not change the recommended board above.
+
 ## Proposed controller wiring allocation
 
 This is a proposed pin assignment **only for the named ESP32-S3 DevKitC reference**, not a verified schematic for another ESP32 variant. Check board revision and module pin reservations before wiring. Keep USB GPIO19/20, boot-strapping pins and PSRAM-reserved pins free of these peripherals.
