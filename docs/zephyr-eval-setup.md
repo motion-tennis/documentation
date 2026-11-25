@@ -56,7 +56,7 @@ The `led-strip` alias, BOOT button (`sw0`, GPIO0), flash and PSRAM sizes and par
 
 ### Location and use
 
-The board root is currently stored outside this repository as `Projekt/esp32s3_zero-board/` and in the workspace as `~/zephyrproject/hardware/esp32s3_zero/`. Builds reference it with `-DBOARD_ROOT=<path>`, or it is registered once in zephyr-utilities (**Custom boards → Register**, followed by **Analyze**). The Device Tree Editor in zephyr-utilities 0.2.0 does not support ESP32 chips; pin assignments are edited manually in application overlays.
+The board, application and VS Code template are versioned together in the [controller evaluation at `3b169d1`](https://github.com/motion-tennis/motion-tennis-controller/tree/3b169d1200da698a0dccbd55799aeac8dd08445f/evaluation/esp32s3-zero). The commands below assume that controller checkout is at `~/zephyrproject/motion-tennis-controller`. The board root is `evaluation/esp32s3-zero/board` within it. Pass that directory to `BOARD_ROOT` or register it in zephyr-utilities (**Custom boards → Register**, followed by **Analyze**). The Device Tree Editor in zephyr-utilities 0.2.0 lacks ESP32 support. Edit pin assignments in the application overlay.
 
 ## Part 2: Host toolchain (once per machine)
 
@@ -121,8 +121,6 @@ This installs only the minimal SDK and the ESP32-S3 toolchain into `~/zephyr-sdk
 ```bash
 git clone https://github.com/VikoHofer/zephyr-utilities ~/zephyrproject/zephyr-utilities
 pip install -e ~/zephyrproject/zephyr-utilities
-mkdir -p ~/zephyrproject/hardware
-cp -r <source>/esp32s3_zero-board ~/zephyrproject/hardware/esp32s3_zero
 ```
 
 Start the UI with `zephyr-utils` from `~/zephyrproject` and open `http://127.0.0.1:8765` in the Windows browser. Clone rather than copy zephyr-utilities from a Windows checkout, because Windows line endings can break Linux scripts.
@@ -157,7 +155,7 @@ Then close the shell, run `wsl --terminate Ubuntu` in PowerShell and reopen Ubun
 
 ### 3.1 Create the project
 
-The evaluation application `zero_blink` was created with zephyr-utilities (**Create application**, template `minimal-c`, target `esp32s3_zero/esp32s3/procpu`) and then changed to cycle the onboard RGB LED through red, green and blue every 500 ms using the `led_strip` API (`CONFIG_LED_STRIP=y`). It is stored as `Projekt/zero_blink/` and in the workspace as `~/zephyrproject/apps/zero_blink/`.
+The original `zero_blink` application was created with zephyr-utilities (**Create application**, template `minimal-c`, target `esp32s3_zero/esp32s3/procpu`). It cycled the onboard RGB LED through red, green and blue every 500 ms using the `led_strip` API (`CONFIG_LED_STRIP=y`). The checked-in version is under `evaluation/esp32s3-zero/zero_blink` and includes the extensions in [Part 5](#part-5-wi-fi-and-protobuf-encoding). Set up those modules and the local credentials header before building this version.
 
 Generated projects contain an empty board-specific overlay `overlays/esp32s3_zero_esp32s3_procpu.overlay`, included automatically by `CMakeLists.txt`. Application hardware such as the MPU-6050 I²C bus belongs there, not in the board definition. Projects do not depend on zephyr-utilities at build time.
 
@@ -166,11 +164,12 @@ Generated projects contain an empty board-specific overlay `overlays/esp32s3_zer
 ```bash
 cd ~/zephyrproject
 source .venv/bin/activate
-west build -p -b esp32s3_zero/esp32s3/procpu apps/zero_blink -d build/zero_blink \
-  -- -DBOARD_ROOT=$HOME/zephyrproject/hardware/esp32s3_zero
+eval_root="$PWD/motion-tennis-controller/evaluation/esp32s3-zero"
+west build -p -b esp32s3_zero/esp32s3/procpu "$eval_root/zero_blink" -d build/zero_blink \
+  -- -DBOARD_ROOT="$eval_root/board"
 ```
 
-The verified build ends with `Successfully created ESP32-S3 image.` and uses 135,240 B of 4 MB flash.
+The original LED-only build reported `Successfully created ESP32-S3 image.` and used 135,240 B of 4 MB flash.
 
 ### 3.3 Flash and monitor
 
@@ -192,19 +191,12 @@ VS Code runs on Windows and works inside Ubuntu through the WSL extension. Editi
 ### 4.1 Install and open
 
 1. Install VS Code for Windows (not inside Ubuntu) and the **WSL** extension (`ms-vscode-remote.remote-wsl`).
-2. Copy the prepared configuration into the west workspace and open it from the Ubuntu shell:
-
-   ```bash
-   cd ~/zephyrproject
-   mkdir -p .vscode
-   cp <source>/zephyr-vscode/*.json .vscode/
-   code .
-   ```
+2. In the Ubuntu shell, follow the [checked-in VS Code template instructions](https://github.com/motion-tennis/motion-tennis-controller/blob/3b169d1200da698a0dccbd55799aeac8dd08445f/evaluation/esp32s3-zero/vscode/README.md) to link the application and board into the west workspace, copy the editor settings and open the workspace.
 
    The first `code .` installs the VS Code Server in Ubuntu. The status bar must show **WSL: Ubuntu**.
 3. Install the recommended extensions when prompted. Check in the Extensions view that each one is listed under **WSL: Ubuntu – Installed**; an extension installed only on the Windows side does not work in the WSL window.
 
-The configuration is currently stored outside this repository as `Projekt/zephyr-vscode/`:
+The template files live in `evaluation/esp32s3-zero/vscode` in the controller checkout.
 
 | File | Content |
 | --- | --- |
@@ -344,7 +336,9 @@ The firmware samples with a timer instead of the MPU-6050 data-ready interrupt, 
 
 ## Open items
 
-- Commit the board definition and `zero_blink` to the agreed repository and record the decision if the ESP32-S3-Zero becomes a supported controller variant.
+The board definition, `zero_blink`, receiver and editor template are versioned at controller `3b169d1`. Board selection for the handheld remains open. The [S1 ledger](project-status.md#remaining-s1-work-at-this-review) defines the current acquisition and output work. The radio measurements below belong to S2.
+
+- Record a board decision if the ESP32-S3-Zero becomes a supported controller variant.
 - Verify Wi-Fi connection and UDP delivery on the device; record rate, jitter and loss at 200 Hz with the test receiver.
 - Verify the MPU-6050 wiring (GPIO1 SDA, GPIO2 SCL, GPIO4 INT) on hardware and move sampling to the data-ready interrupt.
 - Decide whether device builds use Zephyr's nanopb module or the nanopb 0.4.9.1 pinned by the contract checks.

@@ -2,7 +2,9 @@
 
 Motion Tennis is a multiplayer tennis demonstrator for up to four players. The main objective is to make distributed processing, latency, synchronization, data freshness, and measurable timing behavior visible. Sophisticated graphics are secondary.
 
-**Current status:** six repositories contain coordinated documentation. This repository also provides generated host-codec and offline match-contract checks; `debug-units` provides an offline trace checker and synthetic integrity tests; the controller, tracking, physics and game runtimes are not implemented. The current reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers, and webcam-first 2.5D gameplay. Unity with C# is selected for the Windows game client and UI; see [ADR 0012](docs/adr/0012-unity-game-engine.md). Remaining stack choices and budgets are proposed, unverified implementation targets.
+Tracking, physics, game state and debug have tested offline implementations. The controller has a Zephyr bench application that drove one board's LED. The next controller step is local 200 Hz IMU acquisition with safe outputs. This repository holds the shared host-codec and match-contract checks. [Current evidence and open work](docs/project-status.md#remaining-s1-work-at-this-review)
+
+The reference uses the available Raspberry Pi 3 Model B, a Windows laptop with an RTX 5080, four wireless battery controllers and webcam-first 2.5D gameplay. Unity with C# is selected for the Windows game client and UI. Remaining stack choices and budgets are proposed implementation targets. [ADR 0012](docs/adr/0012-unity-game-engine.md)
 
 ## Project progress
 
@@ -11,7 +13,7 @@ Motion Tennis is a multiplayer tennis demonstrator for up to four players. The m
 
 [![Project stage dashboard](assets/project-progress.svg)](docs/project-status.md)
 
-**S1 — Isolated component slices** · Active, incomplete · Evidence reviewed **2026-11-19**.
+**S1 — Isolated component slices** · Active, incomplete · Evidence reviewed **2026-11-25**.
 
 **Accepted core gates: 1/7** · **Active gate checklist: 4/7**. These count reviewed gates and checklist items, not overall completion.
 

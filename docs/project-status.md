@@ -4,7 +4,7 @@
 
 **Active stage: S1 — Isolated component slices.**
 
-**Last evidence review: 2026-11-19.** The project user accepted the [S0 baseline](s0-baseline.md) on 2026-10-26, including the dedicated Pi/PC TCP state channel in ADR 0011. S1 is active. The [current checklist](#active-gate-checklist) includes the physics and game regressions, their shared mixed-batch fixture and the remaining requirements for S1 acceptance.
+**Last evidence review: 2026-11-25.** The project user accepted the [S0 baseline](s0-baseline.md) on 2026-10-26, including the dedicated Pi/PC TCP state channel in ADR 0011. S1 has four of seven items complete. Local controller acquisition and safe outputs, shared trace evidence and human acceptance remain open. [Active gate checklist](#active-gate-checklist)
 
 This is the sole mutable stage ledger. Component guides link here rather than maintaining separate active-stage flags. Record the exact documentation revision read in each task. A pinned status snapshot supplied with an authorized task is acceptable for an isolated/offline checkout; a stale link or memory is not evidence of a later stage release.
 
@@ -13,7 +13,7 @@ This is the sole mutable stage ledger. Component guides link here rather than ma
 | Stage | State | Evidence / missing gate |
 | --- | --- | --- |
 | S0 | Accepted | Human acceptance recorded on 2026-10-26 for the pinned full-match contract, ADR 0011, host evidence and versioned assumptions. |
-| S1 | Active, incomplete | Released by the S0 decision; isolated component slices, reproducible local evidence and shared S1 review remain outstanding. |
+| S1 | Active, incomplete | Tracking, physics, game and offline debug have delivered their scoped slices. The controller slice, cross-component trace review and human acceptance remain open. |
 | S2 | Not released | Needs accepted S1 and actual device/transport feasibility evidence. |
 | S3 | Not released | Needs accepted S2; no live end-to-end path exists. |
 | S4 | Not released | Needs accepted S3; no playable doubles implementation exists. |
@@ -26,7 +26,7 @@ This is the sole mutable stage ledger. Component guides link here rather than ma
 | Repository | Implemented artifacts | Next bounded S1 contribution |
 | --- | --- | --- |
 | documentation | Accepted v0.3 contract baseline, generated host codecs, offline semantic oracle/fixtures, resource evidence and documentation/freshness checkers | Keep component slices pinned to the accepted contract and record actual S1 build/test evidence and remaining dependencies. |
-| motion-tennis-controller | Documentation, contract review and S1 acquisition handoff; no firmware/build setup | Build the bounded local acquisition/safe-output slice after actual board/pins and toolchain prerequisites are pinned. |
+| motion-tennis-controller | A Waveshare ESP32-S3-Zero evaluation includes a Zephyr board definition, build instructions, a test application and a host receiver. One board's LED was exercised. [Evaluation setup](zephyr-eval-setup.md) | Confirm the S1 board, wiring and toolchain, then demonstrate local 200 Hz acquisition, failure and overflow accounting, and default-off outputs. |
 | motion-tennis-camera-tracking | Offline adapter and bounded trace-v1 exporter at `5a72519`, with 64 passing Python tests, generated v0.3 codec evidence and completed technical physics/debug handoff review | Camera contribution, pinned commits, tests and resource evidence are included in the [shared S1 review](s1-review.md). No camera-only S1 work remains in this reviewed slice; live capture, inference and transport retain their later gates. |
 | motion-tennis-physics-engine | The deterministic batch core retains terminal feedback for duplicate transactions. Its shared v0.3 fixture exports the queried keys, a stale-input rejection and the rebuilt two-decision update. | Emit the correlated query, failure, commit and feedback records required by the shared trace review. |
 | motion-tennis-game-engine | The in-memory C# store validates tiebreak counters through the unsigned 56-bit limit. It accepts the shared physics candidate with explicit rejection accounting and rejects incomplete or reordered batches atomically. | Supply correlated game publication and diagnostic records for the shared trace review. |
@@ -90,6 +90,14 @@ The tested changes were committed as physics `08d59a71704f4fe3272a97c3893465f09b
 
 The [mixed-batch fixture](s1-physics-game-fixture.md) closes the S1 question about rejected inputs at the typed physics/game boundary. Query 2 aged out before submission. The game accounted for its full transaction key, committed queries 1 and 3 as events 0 and 1, and advanced once to version 2 at tick 101. Six negative controls and the identical-retry check passed. The [machine-readable result](../evidence/s1-physics-game-mixed-batch-results.json) pins the tested local sources. The broader trace and review item remains open.
 
+## Controller evaluation and S1 boundary — 2026-11-25
+
+The 2026-11-22 evaluation records a build, flash and observed RGB LED on one Waveshare ESP32-S3-Zero using Zephyr 4.4.0 and SDK 1.0.1. It also records a host check of one 133-byte Protobuf message. The application defaults to a simulated IMU at 10 Hz, timestamps timer wake-ups and queues up to 16 samples. Its WLAN and UDP code falls under the documented evaluation exception. The ESP32-S3-DevKitC-1-N8R8 remains the proposed controller reference. [Evaluation setup](zephyr-eval-setup.md) · [Controller source and scope at `3b169d1`](https://github.com/motion-tennis/motion-tennis-controller/tree/3b169d1200da698a0dccbd55799aeac8dd08445f/evaluation/esp32s3-zero)
+
+On 2026-11-25 the evaluation's `motion.proto` and `motion.options` matched the shared Git blobs at documentation `c5a6475` byte for byte. Replaying synthetic sample IDs `1, 3, 2, 2` through the Python receiver in memory produced gap, late and duplicate diagnostics. Malformed bytes and an unexpected message body were also reported. The target build, sensor cadence, output behavior and wireless delivery were not exercised in this host review. The device build uses nanopb 1.0.0-dev and the shared contract checks pin 0.4.9.1. Device codec compatibility remains open.
+
+The host rerun passed all three physics CTest targets, 16 game checks, 64 tracking tests and the tracking consumer checks, 72 debug tests and four synthetic trace fixtures, 32 match-contract tests and 10 evidence-freshness tests. In the shared physics/game fixture the middle input was rejected and the other two decisions committed at state version 2, tick 101. [Shared fixture and reproduction command](s1-physics-game-fixture.md)
+
 ## Active gate checklist
 
 **Checklist stage: S1.**
@@ -106,7 +114,7 @@ Checked delivery items establish the named bounded implementation and its local 
 
 ### Remaining S1 work at this review
 
-- **Controller:** the checkout at `8370c26` remains documentation-only. Pin the actual board/pins and Zephyr toolchain, then deliver acquisition, safe-output and failure/overflow evidence under its existing handoff.
+- **Controller.** Confirm the S1 board, MPU-6050 breakout, pins and dependency revisions. Read back the filter and sample divider, measure 200 Hz cadence with controller-local sample IDs and timestamps, exercise an acquisition failure and queue overflow, and demonstrate default-off LED and motor behavior at startup and on error. Deliver the records to physics and debug. [Controller S1 handoff](https://github.com/motion-tennis/motion-tennis-controller/blob/3b169d1200da698a0dccbd55799aeac8dd08445f/docs/s0-contract-review.md#first-bounded-s1-task)
 - **Trace evidence and review.** Have controller, physics and game emit records that can be joined from sample through query, rejection or commit, publication and feedback. Verify native timestamps, map versions and producer completeness with the offline auditor. Collect compatible component revisions, fixture identities, dependency versions, resource bounds and reproduction commands in the shared S1 review. The [camera handoff](s1-review.md) already provides its controlled-input contribution.
 - **Stage decision:** after the remaining work is verified, obtain and record human acceptance of S1 before releasing S2. This checklist update makes no stage decision.
 
